@@ -46,7 +46,7 @@ fun DiscoverScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(searchFocusRequester),
-            placeholder = { Text("Search poems, authors, or themes...") },
+            placeholder = { Text("What do you want to read?") },
             leadingIcon = {
                 Icon(
                     Icons.Default.Search,
@@ -250,11 +250,11 @@ fun PoemCard(
                     poem.tags.take(3).forEach { tag ->
                         AssistChip(
                             onClick = { },
-                            label = { 
+                            label = {
                                 Text(
                                     text = tag,
                                     style = MaterialTheme.typography.labelSmall
-                                ) 
+                                )
                             },
                             modifier = Modifier.height(24.dp)
                         )
