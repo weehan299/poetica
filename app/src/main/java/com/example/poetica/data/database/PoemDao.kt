@@ -10,6 +10,9 @@ interface PoemDao {
     @Query("SELECT * FROM poems ORDER BY title ASC")
     fun getAllPoems(): Flow<List<Poem>>
     
+    @Query("SELECT * FROM poems ORDER BY title ASC")
+    suspend fun getAllPoemsSync(): List<Poem>
+    
     @Query("SELECT * FROM poems WHERE id = :id")
     suspend fun getPoemById(id: String): Poem?
     

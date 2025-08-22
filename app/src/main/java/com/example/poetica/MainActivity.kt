@@ -15,6 +15,7 @@ import com.example.poetica.data.repository.PoemRepository
 import com.example.poetica.navigation.PoeticaNavigation
 import com.example.poetica.ui.theme.PoeticaTheme
 import com.example.poetica.ui.viewmodel.HomeViewModel
+import com.example.poetica.ui.viewmodel.DiscoverViewModel
 import com.example.poetica.ui.viewmodel.PoemReaderViewModel
 
 class MainActivity : ComponentActivity() {
@@ -45,6 +46,7 @@ fun PoeticaApp(
     val navController = rememberNavController()
     
     val homeViewModel = remember { HomeViewModel(repository) }
+    val discoverViewModel = remember { DiscoverViewModel(repository) }
     
     val poemReaderViewModelFactory: (String) -> PoemReaderViewModel = { poemId ->
         PoemReaderViewModel(repository, poemId)
@@ -53,6 +55,7 @@ fun PoeticaApp(
     PoeticaNavigation(
         navController = navController,
         homeViewModel = homeViewModel,
+        discoverViewModel = discoverViewModel,
         poemReaderViewModelFactory = poemReaderViewModelFactory,
         modifier = modifier.fillMaxSize()
     )

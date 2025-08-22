@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.IOException
+import java.util.Calendar
+import kotlin.random.Random
 
 class PoemRepository(
     private val poemDao: PoemDao,
@@ -41,6 +43,23 @@ class PoemRepository(
     fun getAllPoems(): Flow<List<Poem>> = poemDao.getAllPoems()
     
     suspend fun getPoemById(id: String): Poem? = poemDao.getPoemById(id)
+    
+    suspend fun getPoemOfTheDay(): Poem? {
+        return withContext(Dispatchers.IO) {
+            val allPoems = poemDao.getAllPoemsSync()
+            if (allPoems.isEmpty()) return@withContext null
+            
+            // Use current date as seed for consistent daily selection
+            val calendar = Calendar.getInstance()
+            val dayOfYear = calendar.get(Calendar.DAY_OF_YEAR)
+            val year = calendar.get(Calendar.YEAR)
+            val seed = (year * 1000L + dayOfYear).toLong()
+            val random = Random(seed)
+            val selectedIndex = random.nextInt(allPoems.size)
+            
+            allPoems[selectedIndex]
+        }
+    }
     
     fun getPoemsByAuthor(author: String): Flow<List<Poem>> = poemDao.getPoemsByAuthor(author)
     
