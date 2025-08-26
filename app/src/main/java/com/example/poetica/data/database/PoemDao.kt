@@ -20,6 +20,23 @@ interface PoemDao {
     fun getPoemsByAuthor(author: String): Flow<List<Poem>>
     
     
+    @Query("""
+        SELECT * FROM poems 
+        WHERE title LIKE '%' || :query || '%' 
+        OR author LIKE '%' || :query || '%' 
+        OR content LIKE '%' || :query || '%'
+        ORDER BY 
+            CASE 
+                WHEN title LIKE :query || '%' THEN 1
+                WHEN author LIKE :query || '%' THEN 2
+                WHEN title LIKE '%' || :query || '%' THEN 3
+                WHEN author LIKE '%' || :query || '%' THEN 4
+                ELSE 5
+            END,
+            title ASC
+    """)
+    suspend fun searchPoems(query: String): List<Poem>
+    
     @Query("SELECT DISTINCT author FROM poems ORDER BY author ASC")
     suspend fun getAllAuthors(): List<String>
     
