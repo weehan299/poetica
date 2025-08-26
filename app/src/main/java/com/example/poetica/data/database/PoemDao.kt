@@ -39,8 +39,6 @@ interface PoemDao {
     @Query("SELECT DISTINCT author FROM poems ORDER BY author ASC")
     suspend fun getAllAuthors(): List<String>
     
-    @Query("SELECT DISTINCT tags FROM poems")
-    suspend fun getAllTagsRaw(): List<String>
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPoem(poem: Poem)

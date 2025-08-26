@@ -9,46 +9,31 @@
           "id": "frost-road-not-taken",
           "title": "The Road Not Taken",
           "author": "Robert Frost",
-          "content": "Two roads diverged in a yellow wood,\nAnd sorry I could not travel both\nAnd be one traveler, long I stood\nAnd looked down one as far as I could\nTo where it bent in the undergrowth;\n\nThen took the other, as just as fair,\nAnd having perhaps the better claim,\nBecause it was grassy and wanted wear;\nThough as for that the passing there\nHad worn them really about the same,\n\nAnd both that morning equally lay\nIn leaves no step had trodden black.\nOh, I kept the first for another day!\nYet knowing how way leads on to way,\nI doubted if I should ever be back.\n\nI shall be telling this with a sigh\nSomewhere ages and ages hence:\nTwo roads diverged in a wood, and I—\nI took the one less traveled by,\nAnd that has made all the difference.",
-          "year": 1916,
-          "tags": ["nature", "choice", "life", "journey"],
-          "summary": "A meditation on choice and the paths we take in life"
+          "content": "Two roads diverged in a yellow wood,\nAnd sorry I could not travel both\nAnd be one traveler, long I stood\nAnd looked down one as far as I could\nTo where it bent in the undergrowth;\n\nThen took the other, as just as fair,\nAnd having perhaps the better claim,\nBecause it was grassy and wanted wear;\nThough as for that the passing there\nHad worn them really about the same,\n\nAnd both that morning equally lay\nIn leaves no step had trodden black.\nOh, I kept the first for another day!\nYet knowing how way leads on to way,\nI doubted if I should ever be back.\n\nI shall be telling this with a sigh\nSomewhere ages and ages hence:\nTwo roads diverged in a wood, and I—\nI took the one less traveled by,\nAnd that has made all the difference."
         },
         {
           "id": "shakespeare-sonnet-18",
           "title": "Sonnet 18 (Shall I compare thee to a summer's day?)",
           "author": "William Shakespeare",
-          "content": "Shall I compare thee to a summer's day?\nThou art more lovely and more temperate:\nRough winds do shake the darling buds of May,\nAnd summer's lease hath all too short a date:\n\nSometime too hot the eye of heaven shines,\nAnd often is his gold complexion dimm'd;\nAnd every fair from fair sometime declines,\nBy chance or nature's changing course untrimm'd;\n\nBut thy eternal summer shall not fade\nNor lose possession of that fair thou owest;\nNor shall Death brag thou wander'st in his shade,\nWhen in eternal lines to time thou growest:\n\nSo long as men can breathe or eyes can see,\nSo long lives this, and this gives life to thee.",
-          "year": 1609,
-          "tags": ["love", "beauty", "immortality", "time"],
-          "summary": "A sonnet celebrating eternal beauty through poetry"
+          "content": "Shall I compare thee to a summer's day?\nThou art more lovely and more temperate:\nRough winds do shake the darling buds of May,\nAnd summer's lease hath all too short a date:\n\nSometime too hot the eye of heaven shines,\nAnd often is his gold complexion dimm'd;\nAnd every fair from fair sometime declines,\nBy chance or nature's changing course untrimm'd;\n\nBut thy eternal summer shall not fade\nNor lose possession of that fair thou owest;\nNor shall Death brag thou wander'st in his shade,\nWhen in eternal lines to time thou growest:\n\nSo long as men can breathe or eyes can see,\nSo long lives this, and this gives life to thee."
         },
         {
           "id": "dickinson-hope",
           "title": "Hope is the thing with feathers",
           "author": "Emily Dickinson",
-          "content": "\"Hope\" is the thing with feathers -\nThat perches in the soul -\nAnd sings the tune without the words -\nAnd never stops - at all -\n\nAnd sweetest - in the Gale - is heard -\nAnd sore must be the storm -\nThat could abash the little Bird\nThat kept so many warm -\n\nI've heard it in the chillest land -\nAnd on the strangest Sea -\nYet - never - in Extremity,\nIt asked a crumb - of me.",
-          "year": 1891,
-          "tags": ["hope", "metaphor", "nature", "resilience"],
-          "summary": "A metaphorical exploration of hope as an enduring bird"
+          "content": "\"Hope\" is the thing with feathers -\nThat perches in the soul -\nAnd sings the tune without the words -\nAnd never stops - at all -\n\nAnd sweetest - in the Gale - is heard -\nAnd sore must be the storm -\nThat could abash the little Bird\nThat kept so many warm -\n\nI've heard it in the chillest land -\nAnd on the strangest Sea -\nYet - never - in Extremity,\nIt asked a crumb - of me."
         },
         {
           "id": "maya-angelou-still-i-rise",
           "title": "Still I Rise",
           "author": "Maya Angelou",
-          "content": "You may write me down in history\nWith your bitter, twisted lies,\nYou may tread me in the very dirt\nBut still, like dust, I'll rise.\n\nDoes my sassiness upset you?\nWhy are you beset with gloom?\n'Cause I walk like I've got oil wells\nPumping in my living room.\n\nJust like moons and like suns,\nWith the certainty of tides,\nJust like hopes springing high,\nStill I'll rise.\n\nDid you want to see me broken?\nBowed head and lowered eyes?\nShoulders falling down like teardrops,\nWeakened by my soulful cries?\n\nDoes my haughtiness offend you?\nDon't you take it awful hard\n'Cause I laugh like I've got gold mines\nDiggin' in my own backyard.\n\nYou may shoot me with your words,\nYou may cut me with your eyes,\nYou may kill me with your hatefulness,\nBut still, like air, I'll rise.\n\nDoes my sexiness upset you?\nDoes it come as a surprise\nThat I dance like I've got diamonds\nAt the meeting of my thighs?\n\nOut of the huts of history's shame\nI rise\nUp from a past that's rooted in pain\nI rise\nI'm a black ocean, leaping and wide,\nWelling and swelling I bear in the tide.\n\nLeaving behind nights of terror and fear\nI rise\nInto a daybreak that's wondrously clear\nI rise\nBringing the gifts that my ancestors gave,\nI am the dream and the hope of the slave.\nI rise\nI rise\nI rise.",
-          "year": 1978,
-          "tags": ["empowerment", "resilience", "identity", "triumph"],
-          "summary": "A powerful anthem of resilience and self-empowerment"
+          "content": "You may write me down in history\nWith your bitter, twisted lies,\nYou may tread me in the very dirt\nBut still, like dust, I'll rise.\n\nDoes my sassiness upset you?\nWhy are you beset with gloom?\n'Cause I walk like I've got oil wells\nPumping in my living room.\n\nJust like moons and like suns,\nWith the certainty of tides,\nJust like hopes springing high,\nStill I'll rise.\n\nDid you want to see me broken?\nBowed head and lowered eyes?\nShoulders falling down like teardrops,\nWeakened by my soulful cries?\n\nDoes my haughtiness offend you?\nDon't you take it awful hard\n'Cause I laugh like I've got gold mines\nDiggin' in my own backyard.\n\nYou may shoot me with your words,\nYou may cut me with your eyes,\nYou may kill me with your hatefulness,\nBut still, like air, I'll rise.\n\nDoes my sexiness upset you?\nDoes it come as a surprise\nThat I dance like I've got diamonds\nAt the meeting of my thighs?\n\nOut of the huts of history's shame\nI rise\nUp from a past that's rooted in pain\nI rise\nI'm a black ocean, leaping and wide,\nWelling and swelling I bear in the tide.\n\nLeaving behind nights of terror and fear\nI rise\nInto a daybreak that's wondrously clear\nI rise\nBringing the gifts that my ancestors gave,\nI am the dream and the hope of the slave.\nI rise\nI rise\nI rise."
         },
         {
           "id": "wordsworth-daffodils",
           "title": "I Wandered Lonely as a Cloud",
           "author": "William Wordsworth",
-          "content": "I wandered lonely as a cloud\nThat floats on high o'er vales and hills,\nWhen all at once I saw a crowd,\nA host, of golden daffodils;\nBeside the lake, beneath the trees,\nFluttering and dancing in the breeze.\n\nContinuous as the stars that shine\nAnd twinkle on the milky way,\nThey stretched in never-ending line\nAlong the margin of a bay:\nTen thousand saw I at a glance,\nTossing their heads in sprightly dance.\n\nThe waves beside them danced; but they\nOut-did the sparkling waves in glee:\nA poet could not but be gay,\nIn such a jocund company:\nI gazed—and gazed—but little thought\nWhat wealth the show to me had brought:\n\nFor oft, when on my couch I lie\nIn vacant or in pensive mood,\nThey flash upon that inward eye\nWhich is the bliss of solitude;\nAnd then my heart with pleasure fills,\nAnd dances with the daffodils.",
-          "year": 1807,
-          "tags": ["nature", "memory", "joy", "solitude"],
-          "summary": "A celebration of nature's beauty and its lasting impact on memory"
+          "content": "I wandered lonely as a cloud\nThat floats on high o'er vales and hills,\nWhen all at once I saw a crowd,\nA host, of golden daffodils;\nBeside the lake, beneath the trees,\nFluttering and dancing in the breeze.\n\nContinuous as the stars that shine\nAnd twinkle on the milky way,\nThey stretched in never-ending line\nAlong the margin of a bay:\nTen thousand saw I at a glance,\nTossing their heads in sprightly dance.\n\nThe waves beside them danced; but they\nOut-did the sparkling waves in glee:\nA poet could not but be gay,\nIn such a jocund company:\nI gazed—and gazed—but little thought\nWhat wealth the show to me had brought:\n\nFor oft, when on my couch I lie\nIn vacant or in pensive mood,\nThey flash upon that inward eye\nWhich is the bliss of solitude;\nAnd then my heart with pleasure fills,\nAnd dances with the daffodils."
         }
       ]
     },
@@ -61,19 +46,13 @@
           "id": "plath-mirror",
           "title": "Mirror",
           "author": "Sylvia Plath",
-          "content": "I am silver and exact. I have no preconceptions.\nWhatever I see I swallow immediately\nJust as it is, unmisted by love or dislike.\nI am not cruel, only truthful ‚\nThe eye of a little god, four-cornered.\nMost of the time I meditate on the opposite wall.\nIt is pink, with speckles. I have looked at it so long\nI think it is part of my heart. But it flickers.\nFaces and darkness separate us over and over.\n\nNow I am a lake. A woman bends over me,\nSearching my reaches for what she really is.\nThen she turns to those liars, the candles or the moon.\nI see her back, and reflect it faithfully.\nShe rewards me with tears and an agitation of hands.\nI am important to her. She comes and goes.\nEach morning it is her face that replaces the darkness.\nIn me she has drowned a young girl, and in me an old woman\nRises toward her day after day, like a terrible fish.",
-          "year": 1961,
-          "tags": ["identity", "aging", "truth", "reflection"],
-          "summary": "A mirror's perspective on a woman confronting age and identity"
+          "content": "I am silver and exact. I have no preconceptions.\nWhatever I see I swallow immediately\nJust as it is, unmisted by love or dislike.\nI am not cruel, only truthful ‚\nThe eye of a little god, four-cornered.\nMost of the time I meditate on the opposite wall.\nIt is pink, with speckles. I have looked at it so long\nI think it is part of my heart. But it flickers.\nFaces and darkness separate us over and over.\n\nNow I am a lake. A woman bends over me,\nSearching my reaches for what she really is.\nThen she turns to those liars, the candles or the moon.\nI see her back, and reflect it faithfully.\nShe rewards me with tears and an agitation of hands.\nI am important to her. She comes and goes.\nEach morning it is her face that replaces the darkness.\nIn me she has drowned a young girl, and in me an old woman\nRises toward her day after day, like a terrible fish."
         },
         {
           "id": "hughes-dream-deferred",
           "title": "Harlem (Dream Deferred)",
           "author": "Langston Hughes",
-          "content": "What happens to a dream deferred?\n\nDoes it dry up\nlike a raisin in the sun?\nOr fester like a sore—\nAnd then run?\nDoes it stink like rotten meat?\nOr crust and sugar over—\nlike a syrupy sweet?\n\nMaybe it just sags\nlike a heavy load.\n\nOr does it explode?",
-          "year": 1951,
-          "tags": ["dreams", "social justice", "inequality", "hope"],
-          "summary": "A powerful questioning of what happens when dreams are postponed"
+          "content": "What happens to a dream deferred?\n\nDoes it dry up\nlike a raisin in the sun?\nOr fester like a sore—\nAnd then run?\nDoes it stink like rotten meat?\nOr crust and sugar over—\nlike a syrupy sweet?\n\nMaybe it just sags\nlike a heavy load.\n\nOr does it explode?"
         }
       ]
     }

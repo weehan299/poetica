@@ -1,9 +1,7 @@
 package com.example.poetica.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -12,10 +10,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.poetica.data.model.Poem
@@ -194,30 +190,6 @@ fun PoemOfTheDayCard(
                 modifier = Modifier.fillMaxWidth()
             )
             
-            if (poem.year != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = poem.year.toString(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            
-            if (poem.summary != null) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = poem.summary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f),
-                    textAlign = TextAlign.Center,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            
             Spacer(modifier = Modifier.height(20.dp))
             
             Button(
@@ -239,31 +211,6 @@ fun PoemOfTheDayCard(
                     style = MaterialTheme.typography.labelLarge
                 )
             }
-            
-            if (poem.tags.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    poem.tags.take(3).forEach { tag ->
-                        AssistChip(
-                            onClick = { },
-                            label = { 
-                                Text(
-                                    text = tag,
-                                    style = MaterialTheme.typography.labelSmall
-                                ) 
-                            },
-                            modifier = Modifier.padding(horizontal = 2.dp),
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                                labelColor = MaterialTheme.colorScheme.onSurface
-                            )
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -278,4 +225,3 @@ private fun getTimeOfDayGreeting(): String {
         else -> "Night"
     }
 }
-

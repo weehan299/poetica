@@ -122,16 +122,6 @@ fun PoemReaderContent(
                 modifier = Modifier.fillMaxWidth()
             )
             
-            // Year if available
-            poem.year?.let { year ->
-                Text(
-                    text = year.toString(),
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
             
             Spacer(modifier = Modifier.height(32.dp))
             
@@ -143,40 +133,7 @@ fun PoemReaderContent(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // Tags if available
-            if (poem.tags.isNotEmpty()) {
-                TagsSection(
-                    tags = poem.tags,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
             
-            // Summary if available
-            poem.summary?.let { summary ->
-                Spacer(modifier = Modifier.height(24.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "About this poem",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = summary,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
         }
     }
 }

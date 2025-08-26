@@ -11,11 +11,7 @@ data class Poem(
     val title: String,
     val author: String,
     val content: String,
-    val year: Int? = null,
-    val tags: List<String> = emptyList(),
-    val sourceType: SourceType = SourceType.BUNDLED,
-    val language: String = "en",
-    val summary: String? = null
+    val sourceType: SourceType = SourceType.BUNDLED
 )
 
 @Serializable
