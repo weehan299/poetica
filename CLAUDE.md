@@ -49,8 +49,8 @@ Poetica is a poetry viewing Android application built with Kotlin and Jetpack Co
 The app follows **Clean Architecture** principles with three main layers:
 
 #### Presentation Layer (`ui/`)
-- **Screens**: `HomeScreen.kt` (search & list), `PoemReaderScreen.kt` (reading experience)
-- **ViewModels**: `HomeViewModel.kt`, `PoemReaderViewModel.kt` with StateFlow
+- **Screens**: `HomeScreen.kt` (poem of the day), `DiscoverScreen.kt` (search & browse), `PoemReaderScreen.kt` (reading experience)
+- **ViewModels**: `HomeViewModel.kt`, `DiscoverViewModel.kt`, `PoemReaderViewModel.kt` with StateFlow
 - **Theme**: Custom poetry-focused Material 3 theme with serif typography
 - **Search**: Custom fast search engine with indexing and relevance scoring
 
@@ -61,7 +61,8 @@ The app follows **Clean Architecture** principles with three main layers:
 - **Converters**: Room type converters for List<String> and enums
 
 #### Navigation
-- **Navigation**: Compose Navigation with `PoeticaNavigation.kt`
+- **Navigation**: Two-tab bottom navigation with Compose Navigation (`PoeticaNavigation.kt`)
+- **Tabs**: Home (poem of the day) and Discover (search and browse)
 
 ### Data Flow
 ```
@@ -108,9 +109,10 @@ Search Engine ← Repository ← Room DB ← ViewModel ← User Input
 - Returns `SearchResult` objects with match type and relevance scores
 
 ### Navigation
-- Single Activity architecture with Compose Navigation
-- Route definitions in `PoeticaDestinations` object
-- ViewModels created per navigation destination
+- Single Activity architecture with Compose Navigation and bottom navigation bar
+- Two main tabs: Home (poem of the day) and Discover (search and browse)
+- Route definitions in `PoeticaDestinations` sealed class
+- ViewModels created per navigation destination using `ViewModelFactory`
 
 ## Development Guidelines
 
