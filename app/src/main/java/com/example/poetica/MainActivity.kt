@@ -1,15 +1,21 @@
 package com.example.poetica
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
+import com.example.poetica.data.api.ApiConfig
+import com.example.poetica.data.config.PoeticaConfig
 import com.example.poetica.data.database.PoeticaDatabase
 import com.example.poetica.data.repository.PoemRepository
 import com.example.poetica.navigation.PoeticaNavigation
@@ -26,9 +32,44 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
-        // Initialize repository
+        // Initialize repository with API integration
         val database = PoeticaDatabase.getDatabase(this)
-        repository = PoemRepository(database.poemDao(), this)
+        val config = PoeticaConfig.getInstance(this)
+        
+        // Configure API URL - now using actual machine IP for reliable connectivity
+        Log.d("MainActivity", "🔧 Configuring API URL for current environment...")
+        Log.i("MainActivity", "🌐 Using machine IP address for reliable emulator/device connectivity")
+        config.logCurrentConfig()
+        
+        val apiService = ApiConfig.createApiService(config.apiBaseUrl)
+        
+        repository = PoemRepository(
+            poemDao = database.poemDao(),
+            context = this,
+            apiService = apiService,
+            config = config
+        )
+        
+        // Initialize data and check API health
+        lifecycleScope.launch {
+            repository.initializeWithBundledPoems()
+            
+            if (config.useRemoteData) {
+                Log.d("MainActivity", "🏥 Performing API health check...")
+                val isHealthy = repository.checkApiHealth()
+                if (!isHealthy) {
+                    Log.w("MainActivity", "⚠️ API health check failed - API will retry on each search attempt")
+                    Log.w("MainActivity", "💡 Make sure your API server is running: uvicorn main:app --reload --host 0.0.0.0 --port 8000")
+                    Log.w("MainActivity", "💡 API URL configured as: ${config.apiBaseUrl}")
+                    // Don't permanently disable API - let individual search attempts retry
+                    // config.isApiEnabled = false  // <-- REMOVED: This was preventing retries
+                } else {
+                    Log.d("MainActivity", "✅ API is healthy, remote data enabled")
+                }
+            } else {
+                Log.d("MainActivity", "📱 Using local data only (remote data disabled in config)")
+            }
+        }
         
         setContent {
             PoeticaTheme {

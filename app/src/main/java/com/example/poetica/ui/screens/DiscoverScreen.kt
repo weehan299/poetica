@@ -1,20 +1,18 @@
 package com.example.poetica.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,8 +29,6 @@ fun DiscoverScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val searchFocusRequester = remember { FocusRequester() }
 
     Column(
         modifier = modifier
@@ -43,43 +39,22 @@ fun DiscoverScreen(
         OutlinedTextField(
             value = uiState.searchQuery,
             onValueChange = viewModel::updateSearchQuery,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(searchFocusRequester),
-            placeholder = { Text("What do you want to read?") },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = "Search",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Search poems, authors, or content...") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             trailingIcon = {
                 if (uiState.searchQuery.isNotEmpty()) {
                     IconButton(onClick = viewModel::clearSearch) {
-                        Icon(
-                            Icons.Default.Clear,
-                            contentDescription = "Clear search"
-                        )
+                        Icon(Icons.Default.Clear, contentDescription = "Clear search")
                     }
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(
-                onSearch = {
-                    keyboardController?.hide()
-                }
-            ),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                focusedLabelColor = MaterialTheme.colorScheme.primary
-            )
+            singleLine = true
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Content
         when {
             uiState.isLoading -> {
                 Box(
@@ -91,137 +66,102 @@ fun DiscoverScreen(
                     ) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Loading poems...",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Text("Searching...")
                     }
                 }
             }
-            
+
             uiState.error != null -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Text(
+                        text = "Error: ${uiState.error}",
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+
+            uiState.searchQuery.isNotEmpty() -> {
+                // Search Results
+                if (uiState.searchResults.isNotEmpty()) {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = "Error: ${uiState.error}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { 
-                                // TODO: Add retry functionality
-                            }
-                        ) {
-                            Text("Retry")
+                        items(uiState.searchResults) { searchResult ->
+                            SearchResultItem(
+                                searchResult = searchResult,
+                                onClick = { onPoemClick(searchResult.poem.id) }
+                            )
                         }
                     }
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No results found for \"${uiState.searchQuery}\"",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
-            
-            uiState.searchQuery.isNotEmpty() -> {
-                SearchResults(
-                    searchResults = uiState.searchResults,
-                    onPoemClick = onPoemClick,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            
+
             else -> {
-                PoemsList(
-                    poems = uiState.poems,
-                    onPoemClick = onPoemClick,
-                    modifier = Modifier.fillMaxSize()
-                )
+                // Browse All Poems
+                if (uiState.poems.isNotEmpty()) {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(uiState.poems) { poem ->
+                            PoemListItem(
+                                poem = poem,
+                                onClick = { onPoemClick(poem.id) }
+                            )
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No poems available",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun PoemsList(
-    poems: List<Poem>,
-    onPoemClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(
-            items = poems,
-            key = { it.id }
-        ) { poem ->
-            PoemCard(
-                poem = poem,
-                onClick = { onPoemClick(poem.id) }
-            )
-        }
-    }
-}
-
-@Composable
-fun SearchResults(
-    searchResults: List<SearchResult>,
-    onPoemClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    if (searchResults.isEmpty()) {
-        Box(
-            modifier = modifier,
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "No poems found",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    } else {
-        LazyColumn(
-            modifier = modifier,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(
-                items = searchResults,
-                key = { it.poem.id }
-            ) { searchResult ->
-                SearchResultCard(
-                    searchResult = searchResult,
-                    onClick = { onPoemClick(searchResult.poem.id) }
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PoemCard(
-    poem: Poem,
+fun SearchResultItem(
+    searchResult: SearchResult,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = poem.title,
+                text = searchResult.poem.title,
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -229,110 +169,54 @@ fun PoemCard(
             Spacer(modifier = Modifier.height(4.dp))
             
             Text(
-                text = poem.author,
+                text = "by ${searchResult.poem.author}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
-            if (poem.year != null) {
-                Text(
-                    text = poem.year.toString(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Spacer(modifier = Modifier.height(8.dp))
             
-            if (poem.tags.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    poem.tags.take(3).forEach { tag ->
-                        AssistChip(
-                            onClick = { },
-                            label = {
-                                Text(
-                                    text = tag,
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            },
-                            modifier = Modifier.height(24.dp)
-                        )
-                    }
-                    if (poem.tags.size > 3) {
-                        Text(
-                            text = "+${poem.tags.size - 3}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        )
-                    }
-                }
-            }
+            Text(
+                text = searchResult.poem.content,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchResultCard(
-    searchResult: SearchResult,
+fun PoemListItem(
+    poem: Poem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val poem = searchResult.poem
-    
     Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = poem.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    
-                    Text(
-                        text = poem.author,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                Text(
-                    text = searchResult.matchType.name.replace("_", " ").lowercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            Text(
+                text = poem.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
             
-            if (poem.summary != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = poem.summary,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "by ${poem.author}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
