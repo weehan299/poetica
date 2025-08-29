@@ -20,8 +20,3 @@ enum class SourceType {
     REMOTE,
     USER_ADDED
 }
-
-data class PoemWithSearchData(
-    val poem: Poem,
-    val searchableText: String
-)

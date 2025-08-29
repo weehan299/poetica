@@ -51,14 +51,41 @@ class PoemRepository(
     
     private suspend fun loadBundledPoems() {
         try {
+            Log.d(TAG, "📚 Loading bundled poems from assets...")
             val jsonString = context.assets.open("poems.json").bufferedReader().use { it.readText() }
+            Log.d(TAG, "📁 JSON file size: ${jsonString.length} characters")
+            
             val json = Json { ignoreUnknownKeys = true }
             val bundledPoems = json.decodeFromString<BundledPoems>(jsonString)
             val allPoems = bundledPoems.collections.flatMap { it.poems }
+            
+            Log.d(TAG, "📖 Parsed ${allPoems.size} poems from ${bundledPoems.collections.size} collections")
+            
+            // Log detailed stats for each poem being inserted
+            allPoems.forEachIndexed { index, poem ->
+                val contentLength = poem.content.length
+                val lineCount = poem.content.count { it == '\n' } + 1
+                val paragraphCount = poem.content.split("\n\n").size
+                Log.d(TAG, "📊 Poem ${index + 1}/${allPoems.size}: '${poem.title}' by ${poem.author} - $contentLength chars, $lineCount lines, $paragraphCount paragraphs")
+                
+                // Log content preview for verification
+                val preview = poem.content.take(80).replace("\n", "\\n")
+                val suffix = if (contentLength > 160) {
+                    "..." + poem.content.takeLast(80).replace("\n", "\\n")
+                } else if (contentLength > 80) {
+                    poem.content.drop(80).replace("\n", "\\n")
+                } else ""
+                Log.d(TAG, "📝 Content: \"$preview$suffix\"")
+            }
+            
             poemDao.insertPoems(allPoems)
+            Log.d(TAG, "✅ Successfully inserted ${allPoems.size} bundled poems into database")
+            
         } catch (e: IOException) {
+            Log.e(TAG, "❌ Failed to read poems.json from assets: ${e.message}", e)
             throw Exception("Failed to read poems.json from assets: ${e.message}", e)
         } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to parse poems JSON: ${e.message}", e)
             throw Exception("Failed to parse poems JSON: ${e.message}", e)
         }
     }
@@ -73,17 +100,16 @@ class PoemRepository(
             if (shouldUseRemoteData()) {
                 Log.d(TAG, "🌐 Attempting API browse poems request...")
                 try {
-                    val response = apiService.getSections(
+                    val response = apiService.getPoems(
                         page = page,
                         size = pageSize,
-                        sectionType = "poetry",
-                        minWordCount = 10
+                        language = "en"
                     )
                     Log.d(TAG, "🌐 Browse API response: isSuccessful=${response.isSuccessful}, code=${response.code()}")
                     
                     if (response.isSuccessful && response.body()?.items?.isNotEmpty() == true) {
-                        val apiPoems = response.body()!!.items.map { apiSection ->
-                            ApiToDomainMapper.mapApiSectionToPoem(apiSection)
+                        val apiPoems = response.body()!!.items.map { apiPoemListItem ->
+                            ApiToDomainMapper.mapApiPoemListItemToPoem(apiPoemListItem)
                         }
                         // Cache API poems for later retrieval
                         cacheApiPoems(apiPoems)
@@ -125,15 +151,76 @@ class PoemRepository(
             // First check local database
             val localPoem = poemDao.getPoemById(id)
             if (localPoem != null) {
+                // Log detailed content information
+                val contentLength = localPoem.content.length
+                val lineCount = localPoem.content.count { it == '\n' } + 1
+                val paragraphCount = localPoem.content.split("\n\n").size
+                val wordCount = localPoem.content.split("\\s+".toRegex()).size
+                
                 Log.d(TAG, "📖 ✅ Found poem in local database: '${localPoem.title}' by ${localPoem.author}")
+                Log.d(TAG, "📊 DB content stats - Length: $contentLength chars, Lines: $lineCount, Paragraphs: $paragraphCount, Words: ~$wordCount")
+                
+                // Log first and last few characters to detect truncation
+                val preview = localPoem.content.take(50).replace("\n", "\\n")
+                val suffix = if (contentLength > 100) {
+                    "..." + localPoem.content.takeLast(50).replace("\n", "\\n")
+                } else ""
+                Log.d(TAG, "📝 DB content: \"$preview$suffix\"")
+                
                 return@withContext localPoem
             }
             
-            // If not found locally, check API cache
+            // If not found locally, check API cache first
             val cachedPoem = apiPoemCache[id]
             if (cachedPoem != null) {
+                val contentLength = cachedPoem.content.length
+                val lineCount = cachedPoem.content.count { it == '\n' } + 1
+                val paragraphCount = cachedPoem.content.split("\n\n").size
+                
                 Log.d(TAG, "📖 ✅ Found poem in API cache: '${cachedPoem.title}' by ${cachedPoem.author}")
+                Log.d(TAG, "📊 Cache content stats - Length: $contentLength chars, Lines: $lineCount, Paragraphs: $paragraphCount")
+                
+                // ALWAYS check if this cached poem has preview content and needs full content fetch
+                Log.d(TAG, "🔍 Checking if cached poem has preview content...")
+                val isPreview = isPoemContentPreview(cachedPoem)
+                
+                if (isPreview) {
+                    Log.d(TAG, "🔄 Poem has preview content, attempting to fetch full content...")
+                    val fullContentPoem = fetchFullContentForApiPoem(cachedPoem)
+                    if (fullContentPoem != null) {
+                        Log.d(TAG, "🔄 ✅ Successfully fetched full content")
+                        return@withContext fullContentPoem
+                    } else {
+                        Log.w(TAG, "🔄 ⚠️ Failed to fetch full content, returning preview content")
+                        return@withContext cachedPoem
+                    }
+                } else {
+                    Log.d(TAG, "📖 ✅ Cached poem has full content, no fetch needed")
+                }
+                
                 return@withContext cachedPoem
+            }
+            
+            // Try to fetch from API using canonical_id
+            if (shouldUseRemoteData()) {
+                Log.d(TAG, "🌐 Attempting API poem fetch for id='$id'")
+                try {
+                    val response = apiService.getPoem(id)
+                    Log.d(TAG, "🌐 Poem API response: isSuccessful=${response.isSuccessful}, code=${response.code()}")
+                    
+                    if (response.isSuccessful && response.body() != null) {
+                        val apiPoem = response.body()!!
+                        val poem = ApiToDomainMapper.mapApiPoemToPoem(apiPoem)
+                        // Cache the fetched poem
+                        cacheApiPoems(listOf(poem))
+                        Log.d(TAG, "🌐 ✅ Fetched poem from API: '${poem.title}' by ${poem.author}")
+                        return@withContext poem
+                    } else {
+                        Log.w(TAG, "🌐 API poem fetch response not successful or empty")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "🌐 ❌ Failed to fetch poem from API: ${e.message}", e)
+                }
             }
             
             Log.d(TAG, "📖 ❌ Poem with id='$id' not found in database or cache")
@@ -149,17 +236,12 @@ class PoemRepository(
             if (shouldUseRemoteData()) {
                 Log.d(TAG, "🌐 Attempting API poem of the day request...")
                 try {
-                    val response = apiService.getRandomSections(
-                        count = 1,
-                        sectionType = "poetry",
-                        minWordCount = 20,
-                        maxWordCount = 500
-                    )
+                    val response = apiService.getRandomPoem(language = "en")
                     Log.d(TAG, "🌐 POTD API response: isSuccessful=${response.isSuccessful}, code=${response.code()}")
                     
-                    if (response.isSuccessful && response.body()?.sections?.isNotEmpty() == true) {
-                        val apiSection = response.body()!!.sections.first()
-                        val poem = ApiToDomainMapper.mapApiSectionToPoem(apiSection)
+                    if (response.isSuccessful && response.body() != null) {
+                        val apiPoem = response.body()!!
+                        val poem = ApiToDomainMapper.mapApiPoemToPoem(apiPoem)
                         // Cache API poem for later retrieval
                         cacheApiPoems(listOf(poem))
                         Log.d(TAG, "🌐 ✅ Using API poem of the day: '${poem.title}' by ${poem.author}")
@@ -215,8 +297,7 @@ class PoemRepository(
                     Log.d(TAG, "🌐 Making API call to search endpoint...")
                     val response = apiService.search(
                         query = query.trim(),
-                        limit = ApiConfig.DEFAULT_SEARCH_LIMIT,
-                        sectionLimit = ApiConfig.DEFAULT_SEARCH_LIMIT
+                        poemLimit = ApiConfig.DEFAULT_SEARCH_LIMIT
                     )
                     
                     Log.d(TAG, "🌐 API response: isSuccessful=${response.isSuccessful}, code=${response.code()}")
@@ -361,10 +442,26 @@ class PoemRepository(
     // Cache management methods
     private fun cacheApiPoems(poems: List<Poem>) {
         poems.forEach { poem ->
-            apiPoemCache[poem.id] = poem
+            val existingPoem = apiPoemCache[poem.id]
+            
+            // Only cache if:
+            // 1. No existing poem in cache, OR
+            // 2. Existing poem is preview content and new poem is full content, OR  
+            // 3. New poem is not preview content (always cache full content)
+            if (existingPoem == null || 
+                (isPoemContentPreview(existingPoem) && !isPoemContentPreview(poem)) ||
+                !isPoemContentPreview(poem)) {
+                apiPoemCache[poem.id] = poem
+                
+                if (existingPoem != null && isPoemContentPreview(existingPoem) && !isPoemContentPreview(poem)) {
+                    Log.d(TAG, "💾 ✅ Upgraded cached poem '${poem.title}' from preview to full content")
+                }
+            } else {
+                Log.d(TAG, "💾 ⚠️ Skipping cache of preview content for '${poem.title}' (full content already cached)")
+            }
         }
         
-        Log.d(TAG, "💾 Cached ${poems.size} API poems. Cache size: ${apiPoemCache.size}")
+        Log.d(TAG, "💾 Processed ${poems.size} API poems for caching. Cache size: ${apiPoemCache.size}")
         
         // Manage cache size - keep only most recent poems
         if (apiPoemCache.size > MAX_CACHE_SIZE) {
@@ -376,6 +473,94 @@ class PoemRepository(
     
     private fun getCacheStats(): String {
         return "Cache size: ${apiPoemCache.size}/${MAX_CACHE_SIZE}"
+    }
+    
+    
+    /**
+     * Determines if a poem likely contains only preview content based on content length and characteristics.
+     * API previews are typically short and may contain truncated content indicators.
+     */
+    private fun isPoemContentPreview(poem: Poem): Boolean {
+        val content = poem.content
+        val contentLength = content.length
+        
+        Log.d(TAG, "🔍 isPoemContentPreview() called for '${poem.title}' by ${poem.author}")
+        Log.d(TAG, "🔍 Content length: $contentLength, First 50 chars: \"${content.take(50).replace("\n", "\\n")}...\"")
+        
+        // Only check API poems
+        if (poem.sourceType != SourceType.REMOTE) {
+            Log.d(TAG, "🔍 Not remote source, returning false")
+            return false
+        }
+        
+        // Heuristics for detecting preview content:
+        // 1. Short content (<= 250 chars) - API returns ~200-201 char previews
+        // 2. Content starts with "..." indicating mid-text excerpt  
+        // 3. Content contains "..." indicating truncation
+        // 4. Content seems to end abruptly (no proper ending punctuation)
+        // 5. Content appears to be just first line or preview
+        
+        val isShort = contentLength <= 250
+        val startsWithEllipsis = content.trimStart().startsWith("...")
+        val containsEllipsis = content.contains("...")
+        val endsAbruptly = !content.takeLast(50).contains(Regex("[.!?]\\s*$"))
+        val looksLikeFirstLine = content.lines().size <= 2 && contentLength < 150
+        
+        val isPreview = isShort || startsWithEllipsis || containsEllipsis || endsAbruptly || looksLikeFirstLine
+        
+        Log.d(TAG, "🔍 Preview detection criteria:")
+        Log.d(TAG, "🔍   - isShort (≤250): $isShort")
+        Log.d(TAG, "🔍   - startsWithEllipsis: $startsWithEllipsis") 
+        Log.d(TAG, "🔍   - containsEllipsis: $containsEllipsis")
+        Log.d(TAG, "🔍   - endsAbruptly: $endsAbruptly")
+        Log.d(TAG, "🔍   - looksLikeFirstLine: $looksLikeFirstLine")
+        Log.d(TAG, "🔍   - RESULT: $isPreview")
+        
+        if (isPreview) {
+            Log.d(TAG, "🔍 ✅ DETECTED PREVIEW CONTENT for '${poem.title}' - will fetch full content")
+        } else {
+            Log.d(TAG, "🔍 ✅ FULL CONTENT detected for '${poem.title}' - no fetch needed")
+        }
+        
+        return isPreview
+    }
+    
+    /**
+     * Fetches full content for an API poem that currently has only preview content.
+     * Uses the canonical_id to call the new /api/poems/{canonical_id} endpoint.
+     */
+    private suspend fun fetchFullContentForApiPoem(poem: Poem): Poem? {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "🔄 Fetching full content for poem ID: ${poem.id} (poem: '${poem.title}')")
+                
+                val response = apiService.getPoem(poem.id)
+                Log.d(TAG, "🔄 Full content API response: isSuccessful=${response.isSuccessful}, code=${response.code()}")
+                
+                if (response.isSuccessful && response.body() != null) {
+                    val apiPoem = response.body()!!
+                    val fullPoem = ApiToDomainMapper.mapApiPoemToPoem(apiPoem)
+                    
+                    // Log the content upgrade
+                    val oldLength = poem.content.length
+                    val newLength = fullPoem.content.length
+                    Log.d(TAG, "🔄 ✅ Content upgraded: $oldLength → $newLength chars (+${newLength - oldLength})")
+                    Log.d(TAG, "🔄 Full content preview: \"${fullPoem.content.take(100).replace("\n", "\\n")}...\"")
+                    
+                    // Update cache with full content
+                    apiPoemCache[fullPoem.id] = fullPoem
+                    
+                    return@withContext fullPoem
+                } else {
+                    Log.w(TAG, "🔄 ❌ Failed to fetch full content for poem ${poem.id}: ${response.code()} - ${response.message()}")
+                    return@withContext null
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "🔄 ❌ Exception fetching full content for poem '${poem.title}': ${e.message}", e)
+                return@withContext null
+            }
+        }
     }
     
 }

@@ -6,41 +6,53 @@ import kotlin.random.Random
 
 object ApiToDomainMapper {
     
-    fun mapApiSectionToPoem(apiSection: ApiSection): Poem {
+    fun mapApiPoemToPoem(apiPoem: ApiPoem): Poem {
         return Poem(
-            id = "api_${apiSection.id}",
-            title = apiSection.title,
-            author = apiSection.work.author.name,
-            content = apiSection.contentText,
+            id = apiPoem.canonicalId,
+            title = apiPoem.title,
+            author = apiPoem.author.name,
+            content = apiPoem.text,
             sourceType = SourceType.REMOTE
         )
     }
     
-    fun mapApiSectionResultToSearchResult(apiSectionResult: ApiSectionResult): SearchResult {
+    fun mapApiPoemListItemToPoem(apiPoemListItem: ApiPoemListItem): Poem {
+        return Poem(
+            id = apiPoemListItem.canonicalId,
+            title = apiPoemListItem.title,
+            author = apiPoemListItem.author.name,
+            content = apiPoemListItem.firstLine, // Note: Only first line available in list view
+            sourceType = SourceType.REMOTE
+        )
+    }
+    
+    fun mapApiPoemSearchResultToSearchResult(apiPoemSearchResult: ApiPoemSearchResult): SearchResult {
+        // Note: Using contentPreview for search results (truncated for performance)
+        // Full content will be fetched on-demand when user clicks to read the poem
         val poem = Poem(
-            id = "api_${apiSectionResult.id}",
-            title = apiSectionResult.title,
-            author = apiSectionResult.authorName,
-            content = apiSectionResult.contentPreview,
+            id = apiPoemSearchResult.canonicalId,
+            title = apiPoemSearchResult.title,
+            author = apiPoemSearchResult.authorName,
+            content = apiPoemSearchResult.contentPreview,
             sourceType = SourceType.REMOTE
         )
         
         return SearchResult(
             poem = poem,
-            matchType = mapApiMatchType(apiSectionResult.matchType),
-            relevanceScore = calculateRelevanceScore(apiSectionResult)
+            matchType = mapApiMatchType(apiPoemSearchResult.matchType),
+            relevanceScore = calculateRelevanceScore(apiPoemSearchResult)
         )
     }
     
     fun mapApiSearchResponseToSearchResults(apiResponse: ApiSearchResponse): List<SearchResult> {
         val results = mutableListOf<SearchResult>()
         
-        // Map section results (primary content)
-        apiResponse.results.sections.forEach { sectionResult ->
-            results.add(mapApiSectionResultToSearchResult(sectionResult))
+        // Map poem results (primary content)
+        apiResponse.results.poems.forEach { poemResult ->
+            results.add(mapApiPoemSearchResultToSearchResult(poemResult))
         }
         
-        // TODO: Add work and author results when needed for expanded search features
+        // TODO: Add author results when needed for expanded search features
         
         return results.sortedByDescending { it.relevanceScore }
     }
@@ -57,9 +69,9 @@ object ApiToDomainMapper {
         }
     }
     
-    private fun calculateRelevanceScore(sectionResult: ApiSectionResult): Float {
-        // Calculate relevance score based on match type and content quality
-        val baseScore = when (sectionResult.matchType.lowercase()) {
+    private fun calculateRelevanceScore(poemResult: ApiPoemSearchResult): Float {
+        // Calculate relevance score based on match type
+        val baseScore = when (poemResult.matchType.lowercase()) {
             "exact" -> 100f
             "title" -> 80f
             "author" -> 60f
@@ -68,17 +80,18 @@ object ApiToDomainMapper {
             else -> 20f
         }
         
-        // Adjust based on word count (prefer reasonably sized poems)
-        val wordCountBonus = when {
-            sectionResult.wordCount in 20..200 -> 10f
-            sectionResult.wordCount in 200..500 -> 5f
-            sectionResult.wordCount < 20 -> -5f
+        // Adjust based on content preview length (prefer reasonably sized poems)
+        val contentLength = poemResult.contentPreview.length
+        val lengthBonus = when {
+            contentLength in 100..500 -> 10f
+            contentLength in 500..1000 -> 5f
+            contentLength < 100 -> -5f
             else -> -10f
         }
         
         // Small random factor to vary results
         val randomVariation = Random.nextFloat() * 5f
         
-        return baseScore + wordCountBonus + randomVariation
+        return baseScore + lengthBonus + randomVariation
     }
 }

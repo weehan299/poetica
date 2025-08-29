@@ -20,46 +20,48 @@ interface PoeticaApiService {
         @Query("q") query: String,
         @Query("limit") limit: Int? = null,
         @Query("author_limit") authorLimit: Int? = null,
-        @Query("work_limit") workLimit: Int? = null,
-        @Query("section_limit") sectionLimit: Int? = null
+        @Query("poem_limit") poemLimit: Int? = null
     ): Response<ApiSearchResponse>
     
-    @GET("/api/search/sections")
-    suspend fun searchSections(
+    @GET("/api/search/authors")
+    suspend fun searchAuthors(
         @Query("q") query: String,
-        @Query("limit") limit: Int? = 30,
-        @Query("section_type") sectionType: String? = "poetry"
-    ): Response<ApiSectionResult>
+        @Query("limit") limit: Int? = 20
+    ): Response<ApiAuthorSearchResponse>
     
-    // Section endpoints
-    @GET("/api/sections")
-    suspend fun getSections(
+    @GET("/api/search/poems")
+    suspend fun searchPoems(
+        @Query("q") query: String,
+        @Query("limit") limit: Int? = 30
+    ): Response<ApiPoemSearchResponse>
+    
+    // Poem endpoints
+    @GET("/api/poems")
+    suspend fun getPoems(
         @Query("page") page: Int = 1,
         @Query("size") size: Int = 20,
-        @Query("sort") sort: String = "section_order",
+        @Query("sort") sort: String = "title",
         @Query("order") order: String = "asc",
         @Query("title") title: String? = null,
-        @Query("section_type") sectionType: String? = "poetry",
-        @Query("work_id") workId: Int? = null,
-        @Query("author_id") authorId: Int? = null,
-        @Query("min_word_count") minWordCount: Int? = null,
-        @Query("max_word_count") maxWordCount: Int? = null
-    ): Response<ApiSectionsResponse>
+        @Query("author_name") authorName: String? = null,
+        @Query("language") language: String? = null,
+        @Query("source_origin") sourceOrigin: String? = null
+    ): Response<ApiPoemsResponse>
     
-    @GET("/api/sections/{section_id}")
-    suspend fun getSection(
-        @Path("section_id") sectionId: Int
-    ): Response<ApiSection>
+    @GET("/api/poems/{canonical_id}")
+    suspend fun getPoem(
+        @Path("canonical_id") canonicalId: String
+    ): Response<ApiPoem>
     
-    @GET("/api/sections/random")
-    suspend fun getRandomSections(
-        @Query("count") count: Int = 1,
-        @Query("section_type") sectionType: String = "poetry",
-        @Query("min_word_count") minWordCount: Int = 10,
-        @Query("max_word_count") maxWordCount: Int? = null
-    ): Response<ApiRandomSectionsResponse>
+    @GET("/api/poems/random")
+    suspend fun getRandomPoem(
+        @Query("language") language: String = "en"
+    ): Response<ApiPoem>
     
-    // Author endpoints (for future use)
+    @GET("/api/poems/stats")
+    suspend fun getPoemStats(): Response<ApiPoemStatsResponse>
+    
+    // Author endpoints
     @GET("/api/authors")
     suspend fun getAuthors(
         @Query("page") page: Int = 1,
@@ -67,28 +69,21 @@ interface PoeticaApiService {
         @Query("sort") sort: String = "name",
         @Query("order") order: String = "asc",
         @Query("name") name: String? = null
-    ): Response<Any> // TODO: Define ApiAuthorsResponse when needed
+    ): Response<ApiAuthorsResponse>
     
     @GET("/api/authors/{author_id}")
     suspend fun getAuthor(
         @Path("author_id") authorId: Int
     ): Response<ApiAuthor>
     
-    // Work endpoints (for future use)
-    @GET("/api/works")
-    suspend fun getWorks(
+    @GET("/api/authors/{author_id}/poems")
+    suspend fun getAuthorPoems(
+        @Path("author_id") authorId: Int,
         @Query("page") page: Int = 1,
-        @Query("size") size: Int = 20,
-        @Query("sort") sort: String = "title",
-        @Query("order") order: String = "asc",
-        @Query("title") title: String? = null,
-        @Query("language") language: String? = null,
-        @Query("work_type") workType: String? = null,
-        @Query("author_id") authorId: Int? = null
-    ): Response<Any> // TODO: Define ApiWorksResponse when needed
+        @Query("size") size: Int = 20
+    ): Response<ApiPoemsResponse>
     
-    @GET("/api/works/{work_id}")
-    suspend fun getWork(
-        @Path("work_id") workId: Int
-    ): Response<ApiWork>
+    @GET("/api/authors/stats")
+    suspend fun getAuthorStats(): Response<ApiAuthorStatsResponse>
+    
 }

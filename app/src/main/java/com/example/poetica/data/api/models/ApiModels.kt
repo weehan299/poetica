@@ -4,40 +4,33 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ApiSection(
-    val id: Int,
+data class ApiPoem(
+    @SerialName("canonical_id") val canonicalId: String,
     val title: String,
-    @SerialName("content_text") val contentText: String,
-    @SerialName("content_html") val contentHtml: String? = null,
-    @SerialName("section_order") val sectionOrder: Int,
-    @SerialName("parent_section_order") val parentSectionOrder: Int? = null,
-    @SerialName("parent_section_id") val parentSectionId: Int? = null,
-    val depth: Int = 0,
-    @SerialName("html_file") val htmlFile: String? = null,
-    @SerialName("anchor_id") val anchorId: String? = null,
-    @SerialName("section_type") val sectionType: String,
-    @SerialName("word_count") val wordCount: Int,
-    val lang: String? = "en",
-    val work: ApiWork,
+    @SerialName("first_line") val firstLine: String,
+    val language: String,
+    val author: ApiAuthor,
+    val text: String,
+    @SerialName("work_title") val workTitle: String? = null,
+    @SerialName("source_origin") val sourceOrigin: String,
+    @SerialName("source_work_id") val sourceWorkId: String? = null,
     @SerialName("created_at") val createdAt: String,
     @SerialName("updated_at") val updatedAt: String
 )
 
 @Serializable
-data class ApiWork(
-    val id: Int,
+data class ApiPoemListItem(
+    @SerialName("canonical_id") val canonicalId: String,
     val title: String,
-    val language: String = "en",
-    @SerialName("work_type") val workType: String,
-    val slug: String,
+    @SerialName("first_line") val firstLine: String,
+    val language: String,
     val author: ApiAuthor
 )
 
 @Serializable
 data class ApiAuthor(
     val id: Int,
-    val name: String,
-    val slug: String
+    val name: String
 )
 
 @Serializable
@@ -51,57 +44,34 @@ data class ApiSearchResponse(
 @Serializable
 data class ApiSearchResults(
     val authors: List<ApiAuthorResult> = emptyList(),
-    val works: List<ApiWorkResult> = emptyList(),
-    val sections: List<ApiSectionResult> = emptyList()
+    val poems: List<ApiPoemSearchResult> = emptyList()
 )
 
 @Serializable
 data class ApiAuthorResult(
     val id: Int,
     val name: String,
-    val slug: String,
     @SerialName("match_type") val matchType: String,
-    @SerialName("work_count") val workCount: Int
+    @SerialName("poem_count") val poemCount: Int
 )
 
 @Serializable
-data class ApiWorkResult(
-    val id: Int,
-    val title: String,
-    val slug: String,
-    val language: String,
-    @SerialName("work_type") val workType: String,
-    @SerialName("author_name") val authorName: String,
-    @SerialName("author_slug") val authorSlug: String,
-    @SerialName("match_type") val matchType: String,
-    @SerialName("section_count") val sectionCount: Int
-)
-
-@Serializable
-data class ApiSectionResult(
-    val id: Int,
+data class ApiPoemSearchResult(
+    @SerialName("canonical_id") val canonicalId: String,
     val title: String,
     @SerialName("content_preview") val contentPreview: String,
-    @SerialName("section_order") val sectionOrder: Int,
-    @SerialName("section_type") val sectionType: String,
-    @SerialName("word_count") val wordCount: Int,
-    @SerialName("work_title") val workTitle: String,
-    @SerialName("work_slug") val workSlug: String,
+    @SerialName("first_line") val firstLine: String,
+    @SerialName("work_title") val workTitle: String? = null,
     @SerialName("author_name") val authorName: String,
-    @SerialName("author_slug") val authorSlug: String,
+    val language: String,
     @SerialName("match_type") val matchType: String
 )
 
-@Serializable
-data class ApiRandomSectionsResponse(
-    val sections: List<ApiSection>,
-    val count: Int,
-    @SerialName("filtered_by") val filteredBy: Map<String, String?>
-)
+
 
 @Serializable
-data class ApiSectionsResponse(
-    val items: List<ApiSection>,
+data class ApiPoemsResponse(
+    val items: List<ApiPoemListItem>,
     val total: Int,
     val page: Int,
     val size: Int,
@@ -122,4 +92,50 @@ data class ApiInfoResponse(
     val version: String,
     val docs: String,
     val health: String
+)
+
+@Serializable
+data class ApiPoemStatsResponse(
+    @SerialName("total_poems") val totalPoems: Int,
+    @SerialName("poems_by_language") val poemsByLanguage: Map<String, Int>,
+    @SerialName("poems_by_source") val poemsBySource: Map<String, Int>
+)
+
+@Serializable
+data class ApiAuthorStatsResponse(
+    @SerialName("total_authors") val totalAuthors: Int,
+    @SerialName("authors_with_poems") val authorsWithPoems: Int,
+    @SerialName("authors_without_poems") val authorsWithoutPoems: Int,
+    @SerialName("top_authors_by_poems") val topAuthorsByPoems: List<ApiTopAuthor>
+)
+
+@Serializable
+data class ApiTopAuthor(
+    val name: String,
+    @SerialName("poem_count") val poemCount: Int
+)
+
+@Serializable
+data class ApiAuthorsResponse(
+    val items: List<ApiAuthor>,
+    val total: Int,
+    val page: Int,
+    val size: Int,
+    val pages: Int,
+    @SerialName("has_next") val hasNext: Boolean,
+    @SerialName("has_prev") val hasPrev: Boolean
+)
+
+@Serializable
+data class ApiAuthorSearchResponse(
+    val query: String,
+    val results: List<ApiAuthorResult>,
+    @SerialName("total_results") val totalResults: Int
+)
+
+@Serializable
+data class ApiPoemSearchResponse(
+    val query: String,
+    val results: List<ApiPoemSearchResult>,
+    @SerialName("total_results") val totalResults: Int
 )

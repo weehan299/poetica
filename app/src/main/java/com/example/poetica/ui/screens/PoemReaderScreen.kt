@@ -1,6 +1,7 @@
 package com.example.poetica.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -11,10 +12,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.poetica.data.model.Poem
+import com.example.poetica.ui.theme.getResponsivePoemAuthorStyle
+import com.example.poetica.ui.theme.getResponsivePoemPadding
+import com.example.poetica.ui.theme.getResponsivePoemTextStyle
+import com.example.poetica.ui.theme.getResponsivePoemTitleStyle
 import com.example.poetica.ui.viewmodel.PoemReaderViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -96,7 +104,7 @@ fun PoemReaderContent(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = getResponsivePoemPadding())
                 .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -105,7 +113,7 @@ fun PoemReaderContent(
             // Title
             Text(
                 text = poem.title,
-                style = MaterialTheme.typography.headlineLarge,
+                style = getResponsivePoemTitleStyle(),
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.fillMaxWidth()
@@ -116,7 +124,7 @@ fun PoemReaderContent(
             // Author
             Text(
                 text = poem.author,
-                style = MaterialTheme.typography.headlineMedium,
+                style = getResponsivePoemAuthorStyle(),
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth()
@@ -165,61 +173,76 @@ fun StanzaText(
     text: String,
     modifier: Modifier = Modifier
 ) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyLarge,
-        color = MaterialTheme.colorScheme.onBackground,
-        textAlign = TextAlign.Center,
-        modifier = modifier,
-        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight
-    )
-}
-
-@Composable
-fun TagsSection(
-    tags: List<String>,
-    modifier: Modifier = Modifier
-) {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    
+    // Split into individual lines to preserve poet's intended line breaks
+    val lines = text.split('\n').filter { it.isNotBlank() }
+    
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Themes",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Wrap tags in rows
-        val chunkedTags = tags.chunked(3)
-        chunkedTags.forEach { rowTags ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        lines.forEach { line ->
+            PoemLine(
+                text = line.trim(),
+                screenWidth = screenWidth,
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                rowTags.forEach { tag ->
-                    AssistChip(
-                        onClick = { },
-                        label = { 
-                            Text(
-                                text = tag,
-                                style = MaterialTheme.typography.labelSmall
-                            ) 
-                        },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-                        )
-                    )
-                }
-            }
-            if (chunkedTags.indexOf(rowTags) < chunkedTags.lastIndex) {
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+            )
         }
     }
 }
+
+@Composable
+fun PoemLine(
+    text: String,
+    screenWidth: Dp,
+    modifier: Modifier = Modifier
+) {
+    val textStyle = getResponsivePoemTextStyle()
+    
+    // Estimate if line might be too long based on character count and screen size
+    val screenWidthValue = screenWidth.value
+    val estimatedLineIsTooLong = when {
+        screenWidthValue >= 600f -> text.length > 80  // Tablets can handle longer lines
+        screenWidthValue >= 480f -> text.length > 60  // Medium screens
+        screenWidthValue >= 360f -> text.length > 45  // Regular phones
+        else -> text.length > 35                      // Compact phones
+    }
+    
+    if (estimatedLineIsTooLong) {
+        // For very long lines, use horizontal scroll as elegant fallback
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                style = textStyle,
+                color = MaterialTheme.colorScheme.onBackground,
+                overflow = TextOverflow.Visible,
+                softWrap = false,  // Prevent wrapping, let horizontal scroll handle overflow
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)  // Ensure text has breathing room
+                    .wrapContentWidth()
+            )
+        }
+    } else {
+        // Normal lines with responsive text styling
+        Text(
+            text = text,
+            style = textStyle,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+            modifier = modifier,
+            overflow = TextOverflow.Visible,
+            softWrap = true  // Allow soft wrapping for normal-length lines
+        )
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

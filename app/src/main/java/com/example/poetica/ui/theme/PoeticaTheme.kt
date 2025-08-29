@@ -320,7 +320,6 @@ fun ContrastAwarePoeticaTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = PoetryTypography,
         content = content
     )
 }
@@ -352,7 +351,6 @@ fun PoeticaTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = PoetryTypography,
         content = content
     )
 }
