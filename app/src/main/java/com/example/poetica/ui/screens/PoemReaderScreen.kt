@@ -2,8 +2,9 @@ package com.example.poetica.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -16,6 +17,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -78,14 +83,54 @@ fun PoemReaderContent(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // LazyColumn state for performance and scroll position memory
+    val lazyListState = rememberLazyListState()
+    
+    // Calculate reading progress for progress indicator
+    val readingProgress by remember {
+        derivedStateOf {
+            val layoutInfo = lazyListState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val visibleItems = layoutInfo.visibleItemsInfo.size
+            
+            // If everything fits on screen, progress is always 100%
+            if (totalItems == 0 || totalItems <= visibleItems) {
+                1f
+            } else {
+                val scrollableItems = totalItems - visibleItems
+                val scrolledItems = lazyListState.firstVisibleItemIndex
+                val itemScrollProgress = lazyListState.firstVisibleItemScrollOffset.toFloat() / 
+                    maxOf(1, layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 1)
+                
+                ((scrolledItems + itemScrollProgress) / scrollableItems.toFloat()).coerceIn(0f, 1f)
+            }
+        }
+    }
+    
+    // Prepare stanzas for LazyColumn items
+    val stanzas = remember(poem.content) {
+        poem.content.split("\n\n").filter { it.isNotBlank() }
+    }
+    
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .windowInsetsPadding(WindowInsets.systemBars) // Respect system bars
     ) {
-        // Top App Bar - minimal
+        // Top App Bar with progress indicator
         TopAppBar(
-            title = { },
+            title = { 
+                // Discreet progress indicator
+                LinearProgressIndicator(
+                    progress = { readingProgress },
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .height(2.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                )
+            },
             navigationIcon = {
                 IconButton(onClick = onBackClick) {
                     Icon(
@@ -100,79 +145,89 @@ fun PoemReaderContent(
             )
         )
         
-        // Poem content with reading width constraint
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = getResponsivePoemPadding()),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            Column(
+        // LazyColumn with SelectionContainer for text selection
+        SelectionContainer {
+            LazyColumn(
+                state = lazyListState,
                 modifier = Modifier
-                    .widthIn(max = 600.dp) // Constrain reading width
-                    .padding(bottom = 32.dp),
+                    .fillMaxSize()
+                    .padding(horizontal = getResponsivePoemPadding()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Title
-            Text(
-                text = poem.title,
-                style = getResponsivePoemTitleStyle(),
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Author
-            Text(
-                text = poem.author,
-                style = getResponsivePoemAuthorStyle(),
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // Poem content with proper line breaks and spacing
-            ReadablePoemContent(
-                content = poem.content,
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
+                // Header spacer
+                item { 
+                    Spacer(modifier = Modifier.height(16.dp)) 
+                }
+                
+                // Title
+                item {
+                    Box(
+                        modifier = Modifier.widthIn(max = 600.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = poem.title,
+                            style = getResponsivePoemTitleStyle(),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                
+                // Spacer after title
+                item { 
+                    Spacer(modifier = Modifier.height(8.dp)) 
+                }
+                
+                // Author
+                item {
+                    Box(
+                        modifier = Modifier.widthIn(max = 600.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = poem.author,
+                            style = getResponsivePoemAuthorStyle(),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                
+                // Spacer before poem content
+                item { 
+                    Spacer(modifier = Modifier.height(32.dp)) 
+                }
+                
+                // Each stanza as separate LazyColumn item for optimal performance
+                items(stanzas.size) { index ->
+                    Box(
+                        modifier = Modifier.widthIn(max = 600.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        ReadableStanza(
+                            text = stanzas[index].trim(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    
+                    // Add spacing between stanzas (except after last stanza)
+                    if (index < stanzas.size - 1) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
+                }
+                
+                // Footer spacer
+                item { 
+                    Spacer(modifier = Modifier.height(32.dp)) 
+                }
             }
         }
     }
 }
 
-@Composable
-fun ReadablePoemContent(
-    content: String,
-    modifier: Modifier = Modifier
-) {
-    // Split content into stanzas (separated by double line breaks)
-    val stanzas = content.split("\n\n").filter { it.isNotBlank() }
-    
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.Start, // Left-align for better readability
-        verticalArrangement = Arrangement.spacedBy(24.dp) // Optimal stanza spacing
-    ) {
-        stanzas.forEach { stanza ->
-            ReadableStanza(
-                text = stanza.trim(),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
 
 @Composable
 fun ReadableStanza(
