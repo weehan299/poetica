@@ -1,13 +1,11 @@
 package com.example.poetica.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,7 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextIndent
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -100,15 +100,20 @@ fun PoemReaderContent(
             )
         )
         
-        // Poem content
-        Column(
+        // Poem content with reading width constraint
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = getResponsivePoemPadding())
-                .padding(bottom = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = getResponsivePoemPadding()),
+            contentAlignment = Alignment.TopCenter
         ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 600.dp) // Constrain reading width
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
             Spacer(modifier = Modifier.height(16.dp))
             
             // Title
@@ -135,20 +140,20 @@ fun PoemReaderContent(
             Spacer(modifier = Modifier.height(32.dp))
             
             // Poem content with proper line breaks and spacing
-            PoemContent(
+            ReadablePoemContent(
                 content = poem.content,
                 modifier = Modifier.fillMaxWidth()
             )
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            
+            }
         }
     }
 }
 
 @Composable
-fun PoemContent(
+fun ReadablePoemContent(
     content: String,
     modifier: Modifier = Modifier
 ) {
@@ -157,11 +162,11 @@ fun PoemContent(
     
     Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        horizontalAlignment = Alignment.Start, // Left-align for better readability
+        verticalArrangement = Arrangement.spacedBy(24.dp) // Optimal stanza spacing
     ) {
         stanzas.forEach { stanza ->
-            StanzaText(
+            ReadableStanza(
                 text = stanza.trim(),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -170,24 +175,24 @@ fun PoemContent(
 }
 
 @Composable
-fun StanzaText(
+fun ReadableStanza(
     text: String,
     modifier: Modifier = Modifier
 ) {
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
+    val textStyle = getResponsivePoemTextStyle()
     
     // Split into individual lines to preserve poet's intended line breaks
     val lines = text.split('\n').filter { it.isNotBlank() }
     
     Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(0.dp) // No extra spacing between lines within stanza
     ) {
         lines.forEach { line ->
-            PoemLine(
+            ReadablePoemLine(
                 text = line.trim(),
-                screenWidth = screenWidth,
+                textStyle = textStyle,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -195,53 +200,26 @@ fun StanzaText(
 }
 
 @Composable
-fun PoemLine(
+fun ReadablePoemLine(
     text: String,
-    screenWidth: Dp,
+    textStyle: TextStyle,
     modifier: Modifier = Modifier
 ) {
-    val textStyle = getResponsivePoemTextStyle()
-    
-    // Estimate if line might be too long based on character count and screen size
-    val screenWidthValue = screenWidth.value
-    val estimatedLineIsTooLong = when {
-        screenWidthValue >= 600f -> text.length > 80  // Tablets can handle longer lines
-        screenWidthValue >= 480f -> text.length > 60  // Medium screens
-        screenWidthValue >= 360f -> text.length > 45  // Regular phones
-        else -> text.length > 35                      // Compact phones
-    }
-    
-    if (estimatedLineIsTooLong) {
-        // For very long lines, use horizontal scroll as elegant fallback
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = text,
-                style = textStyle,
-                color = MaterialTheme.colorScheme.onBackground,
-                overflow = TextOverflow.Visible,
-                softWrap = false,  // Prevent wrapping, let horizontal scroll handle overflow
-                modifier = Modifier
-                    .padding(horizontal = 24.dp)  // Ensure text has breathing room
-                    .wrapContentWidth()
+    // Implement hanging indent for wrapped lines
+    // First line has no indent, continuation lines are indented
+    Text(
+        text = text,
+        style = textStyle.copy(
+            textIndent = TextIndent(
+                firstLine = 0.sp,
+                restLine = 24.sp // Hanging indent for wrapped lines
             )
-        }
-    } else {
-        // Normal lines with responsive text styling
-        Text(
-            text = text,
-            style = textStyle,
-            color = MaterialTheme.colorScheme.onBackground,
-            textAlign = TextAlign.Center,
-            modifier = modifier,
-            overflow = TextOverflow.Visible,
-            softWrap = true  // Allow soft wrapping for normal-length lines
-        )
-    }
+        ),
+        color = MaterialTheme.colorScheme.onBackground,
+        textAlign = TextAlign.Start, // Left-aligned for optimal reading
+        modifier = modifier,
+        softWrap = true // Always allow soft wrapping
+    )
 }
 
 
@@ -262,7 +240,7 @@ fun ErrorContent(
             navigationIcon = {
                 IconButton(onClick = onBackClick) {
                     Icon(
-                        Icons.Default.ArrowBack,
+                        Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = MaterialTheme.colorScheme.onSurface
                     )

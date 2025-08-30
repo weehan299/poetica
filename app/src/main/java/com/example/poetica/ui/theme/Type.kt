@@ -30,7 +30,7 @@ fun getResponsivePoemTextStyle(): TextStyle {
             fontFamily = FontFamily.Serif,
             fontWeight = FontWeight.Normal,
             fontSize = 19.sp,
-            lineHeight = 29.sp,
+            lineHeight = 30.sp, // 1.58x ratio for optimal readability
             letterSpacing = 0.15.sp
         )
         // Medium screens (most phones in landscape, small tablets in portrait)
@@ -38,7 +38,7 @@ fun getResponsivePoemTextStyle(): TextStyle {
             fontFamily = FontFamily.Serif,
             fontWeight = FontWeight.Normal,
             fontSize = 18.sp,
-            lineHeight = 28.sp,
+            lineHeight = 28.sp, // 1.56x ratio
             letterSpacing = 0.1.sp
         )
         // Small screens (most phones in portrait)
@@ -46,7 +46,7 @@ fun getResponsivePoemTextStyle(): TextStyle {
             fontFamily = FontFamily.Serif,
             fontWeight = FontWeight.Normal,
             fontSize = 17.sp,
-            lineHeight = 26.sp,
+            lineHeight = 26.sp, // 1.53x ratio
             letterSpacing = 0.05.sp
         )
         // Very small screens (compact phones)
@@ -54,7 +54,7 @@ fun getResponsivePoemTextStyle(): TextStyle {
             fontFamily = FontFamily.Serif,
             fontWeight = FontWeight.Normal,
             fontSize = 16.sp,
-            lineHeight = 24.sp,
+            lineHeight = 25.sp, // 1.56x ratio for better readability
             letterSpacing = 0.sp
         )
     }
