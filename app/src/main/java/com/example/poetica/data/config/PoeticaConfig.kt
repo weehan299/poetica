@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 
-class PoeticaConfig private constructor(context: Context) {
+class PoeticaConfig private constructor(private val context: Context) {
     
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences(
         PREFS_NAME, Context.MODE_PRIVATE
@@ -17,9 +17,37 @@ class PoeticaConfig private constructor(context: Context) {
         private const val KEY_USE_REMOTE_DATA = "use_remote_data"
         private const val KEY_API_ENABLED = "api_enabled"
         
-        // Default values - Using actual machine IP for reliable emulator access
-        const val DEFAULT_API_BASE_URL = "http://172.30.28.71:8000"
+        // API URL Constants
+        const val LOCAL_API_BASE_URL = "http://172.30.28.71:8000"
+        const val PRODUCTION_API_BASE_URL = "https://poetica-api-544010023223.us-central1.run.app"
+        
+        // Default values - Will be set based on build variant
         const val DEFAULT_USE_REMOTE_DATA = true
+        
+        // Get default URL based on build configuration
+        fun getDefaultApiBaseUrl(context: Context): String {
+            return try {
+                // Try to use BuildConfig API_BASE_URL if available
+                val buildConfigClass = Class.forName("${context.packageName}.BuildConfig")
+                val apiUrlField = buildConfigClass.getField("API_BASE_URL")
+                val apiUrl = apiUrlField.get(null) as String
+                Log.d(TAG, "⚙️ Using BuildConfig API URL: $apiUrl")
+                apiUrl
+            } catch (e: Exception) {
+                try {
+                    // Fallback to DEBUG field check
+                    val buildConfigClass = Class.forName("${context.packageName}.BuildConfig")
+                    val debugField = buildConfigClass.getField("DEBUG")
+                    val isDebug = debugField.getBoolean(null)
+                    val url = if (isDebug) LOCAL_API_BASE_URL else PRODUCTION_API_BASE_URL
+                    Log.d(TAG, "⚙️ Using DEBUG field fallback, isDebug=$isDebug -> $url")
+                    url
+                } catch (e2: Exception) {
+                    Log.d(TAG, "⚙️ Could not determine build type, using production URL: ${e2.message}")
+                    PRODUCTION_API_BASE_URL
+                }
+            }
+        }
         
         @Volatile
         private var INSTANCE: PoeticaConfig? = null
@@ -36,7 +64,8 @@ class PoeticaConfig private constructor(context: Context) {
     // API Base URL Configuration
     var apiBaseUrl: String
         get() {
-            val url = sharedPreferences.getString(KEY_API_BASE_URL, DEFAULT_API_BASE_URL) ?: DEFAULT_API_BASE_URL
+            val defaultUrl = getDefaultApiBaseUrl(context)
+            val url = sharedPreferences.getString(KEY_API_BASE_URL, defaultUrl) ?: defaultUrl
             Log.d(TAG, "⚙️ apiBaseUrl getter -> $url")
             return url
         }
@@ -78,12 +107,43 @@ class PoeticaConfig private constructor(context: Context) {
     // Convenience methods
     fun resetToDefaults() {
         Log.i(TAG, "⚙️ Resetting configuration to defaults")
+        val defaultUrl = getDefaultApiBaseUrl(context)
         sharedPreferences.edit()
-            .putString(KEY_API_BASE_URL, DEFAULT_API_BASE_URL)
+            .putString(KEY_API_BASE_URL, defaultUrl)
             .putBoolean(KEY_USE_REMOTE_DATA, DEFAULT_USE_REMOTE_DATA)
             .putBoolean(KEY_API_ENABLED, true)
             .apply()
         Log.i(TAG, "⚙️ Configuration reset completed -> ${getConfigSummary()}")
+    }
+    
+    // API Environment Switching Methods
+    fun useLocalApi() {
+        Log.i(TAG, "⚙️ Switching to Local API: $LOCAL_API_BASE_URL")
+        apiBaseUrl = LOCAL_API_BASE_URL
+        useRemoteData = true
+        isApiEnabled = true
+    }
+    
+    fun useProductionApi() {
+        Log.i(TAG, "⚙️ Switching to Production API: $PRODUCTION_API_BASE_URL")
+        apiBaseUrl = PRODUCTION_API_BASE_URL
+        useRemoteData = true
+        isApiEnabled = true
+    }
+    
+    fun useBundledDataOnly() {
+        Log.i(TAG, "⚙️ Switching to bundled data only (no API)")
+        useRemoteData = false
+        isApiEnabled = false
+    }
+    
+    fun getCurrentEnvironment(): String {
+        return when {
+            !useRemoteData || !isApiEnabled -> "LOCAL_BUNDLED"
+            apiBaseUrl.contains(LOCAL_API_BASE_URL) -> "LOCAL_API"
+            apiBaseUrl.contains(PRODUCTION_API_BASE_URL) -> "PRODUCTION_API"
+            else -> "CUSTOM_API"
+        }
     }
     
     fun isLocalMode(): Boolean {
@@ -124,8 +184,9 @@ class PoeticaConfig private constructor(context: Context) {
         
         Log.d(TAG, "📱 Current API URL: $currentUrl, Optimal URL: $optimalUrl")
         
-        // Only update if currently using default localhost
-        if (apiBaseUrl == DEFAULT_API_BASE_URL || apiBaseUrl == localhostUrl) {
+        // Only update if currently using default URL or localhost
+        val defaultUrl = getDefaultApiBaseUrl(context)
+        if (apiBaseUrl == defaultUrl || apiBaseUrl == localhostUrl) {
             Log.i(TAG, "📱 Updating API URL from $currentUrl to $optimalUrl")
             apiBaseUrl = optimalUrl
         } else {
@@ -152,7 +213,8 @@ class PoeticaConfig private constructor(context: Context) {
             "useRemoteData" to useRemoteData,
             "isApiEnabled" to isApiEnabled,
             "isLocalMode" to isLocalMode(),
-            "isEmulator" to isRunningOnEmulator()
+            "isEmulator" to isRunningOnEmulator(),
+            "currentEnvironment" to getCurrentEnvironment()
         )
         Log.d(TAG, "⚙️ Config summary: $summary")
         return summary

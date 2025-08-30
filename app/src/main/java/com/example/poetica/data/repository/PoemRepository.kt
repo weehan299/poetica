@@ -13,6 +13,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.IOException
 import java.util.Calendar
 import kotlin.random.Random
@@ -20,7 +25,7 @@ import kotlin.random.Random
 class PoemRepository(
     private val poemDao: PoemDao,
     val context: Context,
-    private val apiService: PoeticaApiService = ApiConfig.createApiService(),
+    private val apiService: PoeticaApiService = ApiConfig.createApiService(context),
     private val config: PoeticaConfig? = null
 ) {
     
@@ -43,47 +48,70 @@ class PoemRepository(
     suspend fun initializeWithBundledPoems() {
         withContext(Dispatchers.IO) {
             val count = poemDao.getPoemCount()
+            Log.d(TAG, "📊 Database initialization: ${count} poems already in database")
+            
+            // With pre-populated database, poems should already exist
+            // Only fallback to JSON loading if database is somehow empty
             if (count == 0) {
+                Log.w(TAG, "⚠️ Pre-populated database appears empty, falling back to JSON loading...")
                 loadBundledPoems()
+            } else {
+                Log.d(TAG, "✅ Using pre-populated database with ${count} poems")
             }
         }
     }
     
     private suspend fun loadBundledPoems() {
         try {
-            Log.d(TAG, "📚 Loading bundled poems from assets...")
-            val jsonString = context.assets.open("poems.json").bufferedReader().use { it.readText() }
+            Log.d(TAG, "📚 Fallback: Loading bundled poems from JSON assets...")
+            
+            // Try new poems_bundle.json first, fallback to old poems.json
+            val jsonString = try {
+                context.assets.open("poems_bundle.json").bufferedReader().use { it.readText() }
+            } catch (e: IOException) {
+                Log.w(TAG, "📁 poems_bundle.json not found, trying poems.json")
+                context.assets.open("poems.json").bufferedReader().use { it.readText() }
+            }
+            
             Log.d(TAG, "📁 JSON file size: ${jsonString.length} characters")
             
             val json = Json { ignoreUnknownKeys = true }
-            val bundledPoems = json.decodeFromString<BundledPoems>(jsonString)
-            val allPoems = bundledPoems.collections.flatMap { it.poems }
             
-            Log.d(TAG, "📖 Parsed ${allPoems.size} poems from ${bundledPoems.collections.size} collections")
-            
-            // Log detailed stats for each poem being inserted
-            allPoems.forEachIndexed { index, poem ->
-                val contentLength = poem.content.length
-                val lineCount = poem.content.count { it == '\n' } + 1
-                val paragraphCount = poem.content.split("\n\n").size
-                Log.d(TAG, "📊 Poem ${index + 1}/${allPoems.size}: '${poem.title}' by ${poem.author} - $contentLength chars, $lineCount lines, $paragraphCount paragraphs")
+            // Parse new bundle format or fallback to old format
+            val allPoems = if (jsonString.contains("\"collections\"")) {
+                // New poems_bundle.json format
+                val bundleData = json.decodeFromString<JsonObject>(jsonString)
+                val collections = bundleData["collections"]?.jsonArray ?: JsonArray(emptyList())
                 
-                // Log content preview for verification
-                val preview = poem.content.take(80).replace("\n", "\\n")
-                val suffix = if (contentLength > 160) {
-                    "..." + poem.content.takeLast(80).replace("\n", "\\n")
-                } else if (contentLength > 80) {
-                    poem.content.drop(80).replace("\n", "\\n")
-                } else ""
-                Log.d(TAG, "📝 Content: \"$preview$suffix\"")
+                collections.flatMap { collection ->
+                    val collectionObj = collection.jsonObject
+                    val poems = collectionObj["poems"]?.jsonArray ?: JsonArray(emptyList())
+                    
+                    poems.map { poemJson ->
+                        val poemObj = poemJson.jsonObject
+                        Poem(
+                            id = poemObj["id"]?.jsonPrimitive?.content ?: "",
+                            title = poemObj["title"]?.jsonPrimitive?.content ?: "",
+                            author = poemObj["author"]?.jsonPrimitive?.content ?: "",
+                            content = poemObj["text"]?.jsonPrimitive?.content ?: "", // Note: "text" maps to "content"
+                            sourceType = SourceType.BUNDLED
+                        )
+                    }
+                }
+            } else {
+                // Old poems.json format
+                val bundledPoems = json.decodeFromString<BundledPoems>(jsonString)
+                bundledPoems.collections.flatMap { it.poems }
             }
+            
+            Log.d(TAG, "📖 Parsed ${allPoems.size} poems for fallback insertion")
             
             poemDao.insertPoems(allPoems)
             Log.d(TAG, "✅ Successfully inserted ${allPoems.size} bundled poems into database")
             
         } catch (e: IOException) {
-            Log.e(TAG, "❌ Failed to read poems.json from assets: ${e.message}", e)
-            throw Exception("Failed to read poems.json from assets: ${e.message}", e)
+            Log.e(TAG, "❌ Failed to read poems JSON from assets: ${e.message}", e)
+            throw Exception("Failed to read poems JSON from assets: ${e.message}", e)
         } catch (e: Exception) {
             Log.e(TAG, "❌ Failed to parse poems JSON: ${e.message}", e)
             throw Exception("Failed to parse poems JSON: ${e.message}", e)
@@ -92,56 +120,15 @@ class PoemRepository(
     
     fun getAllPoems(): Flow<List<Poem>> = poemDao.getAllPoems()
     
-    suspend fun getBrowsePoems(page: Int = 1, pageSize: Int = 20): List<Poem> {
-        Log.d(TAG, "📚 getBrowsePoems() called with page=$page, pageSize=$pageSize")
-        
-        return withContext(Dispatchers.IO) {
-            // Try API first if enabled
-            if (shouldUseRemoteData()) {
-                Log.d(TAG, "🌐 Attempting API browse poems request...")
-                try {
-                    val response = apiService.getPoems(
-                        page = page,
-                        size = pageSize,
-                        language = "en"
-                    )
-                    Log.d(TAG, "🌐 Browse API response: isSuccessful=${response.isSuccessful}, code=${response.code()}")
-                    
-                    if (response.isSuccessful && response.body()?.items?.isNotEmpty() == true) {
-                        val apiPoems = response.body()!!.items.map { apiPoemListItem ->
-                            ApiToDomainMapper.mapApiPoemListItemToPoem(apiPoemListItem)
-                        }
-                        // Cache API poems for later retrieval
-                        cacheApiPoems(apiPoems)
-                        Log.d(TAG, "🌐 ✅ Using API browse results (${apiPoems.size} items)")
-                        return@withContext apiPoems
-                    } else {
-                        Log.w(TAG, "🌐 API browse response not successful or empty")
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "🌐 ❌ Failed to get browse poems from API, falling back to local", e)
-                }
-            } else {
-                Log.d(TAG, "🏠 Skipping API browse, using local poems only")
-            }
-            
-            // Fallback to local poems
-            Log.d(TAG, "🏠 Getting local poems for browse...")
-            val localPoems = poemDao.getAllPoemsSync()
-            val startIndex = (page - 1) * pageSize
-            val endIndex = minOf(startIndex + pageSize, localPoems.size)
-            
-            Log.d(TAG, "🏠 Local poems: ${localPoems.size} total, requesting range $startIndex-$endIndex")
-            
-            if (startIndex >= localPoems.size) {
-                Log.d(TAG, "🏠 ✅ Returning empty list (page beyond available poems)")
-                emptyList()
-            } else {
-                val result = localPoems.subList(startIndex, endIndex)
-                Log.d(TAG, "🏠 ✅ Returning local browse results (${result.size} items)")
-                result
-            }
-        }
+    // Memory-optimized methods
+    fun getAllPoemsMetadata(): Flow<List<Poem>> = poemDao.getPoemsMetadataFlow()
+    
+    suspend fun getPoemsPage(limit: Int = 50, offset: Int = 0): List<Poem> {
+        return poemDao.getPoemsMetadata(limit, offset)
+    }
+    
+    suspend fun searchPoemsMetadata(query: String, limit: Int = 50, offset: Int = 0): List<Poem> {
+        return poemDao.searchPoemsMetadata(query.trim(), limit, offset)
     }
     
     suspend fun getPoemById(id: String): Poem? {
@@ -232,9 +219,33 @@ class PoemRepository(
         Log.d(TAG, "🌅 getPoemOfTheDay() called")
         
         return withContext(Dispatchers.IO) {
-            // Try API first if enabled
+            // Try local poems first for instant response - using optimized query
+            Log.d(TAG, "🏠 Getting local poem of the day...")
+            val poemCount = poemDao.getPoemCountForSelection()
+            if (poemCount > 0) {
+                // Use current date as seed for consistent daily selection
+                val calendar = Calendar.getInstance()
+                val dayOfYear = calendar.get(Calendar.DAY_OF_YEAR)
+                val year = calendar.get(Calendar.YEAR)
+                val seed = (year * 1000L + dayOfYear).toLong()
+                val random = Random(seed)
+                val selectedIndex = random.nextInt(poemCount)
+                
+                // Load only the selected poem - no memory overhead!
+                val selectedPoem = poemDao.getPoemByIndex(selectedIndex)
+                if (selectedPoem != null) {
+                    Log.d(TAG, "🏠 ✅ Selected local POTD: '${selectedPoem.title}' by ${selectedPoem.author} (seed=$seed, index=$selectedIndex, total=$poemCount)")
+                    return@withContext selectedPoem
+                } else {
+                    Log.w(TAG, "🏠 ⚠️ Failed to load poem at index $selectedIndex, trying API fallback...")
+                }
+            } else {
+                Log.w(TAG, "🏠 ⚠️ No local poems available, trying API fallback...")
+            }
+            
+            // Fallback to API only if local database is empty
             if (shouldUseRemoteData()) {
-                Log.d(TAG, "🌐 Attempting API poem of the day request...")
+                Log.d(TAG, "🌐 Attempting API poem of the day as fallback...")
                 try {
                     val response = apiService.getRandomPoem(language = "en")
                     Log.d(TAG, "🌐 POTD API response: isSuccessful=${response.isSuccessful}, code=${response.code()}")
@@ -244,37 +255,20 @@ class PoemRepository(
                         val poem = ApiToDomainMapper.mapApiPoemToPoem(apiPoem)
                         // Cache API poem for later retrieval
                         cacheApiPoems(listOf(poem))
-                        Log.d(TAG, "🌐 ✅ Using API poem of the day: '${poem.title}' by ${poem.author}")
+                        Log.d(TAG, "🌐 ✅ Using API poem of the day as fallback: '${poem.title}' by ${poem.author}")
                         return@withContext poem
                     } else {
                         Log.w(TAG, "🌐 API POTD response not successful or empty")
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "🌐 ❌ Failed to get poem of the day from API, falling back to local", e)
+                    Log.w(TAG, "🌐 ❌ Failed to get poem of the day from API", e)
                 }
             } else {
-                Log.d(TAG, "🏠 Skipping API POTD, using local selection only")
+                Log.d(TAG, "🌐 API disabled, no fallback available")
             }
             
-            // Fallback to local poems
-            Log.d(TAG, "🏠 Getting local poem of the day...")
-            val allPoems = poemDao.getAllPoemsSync()
-            if (allPoems.isEmpty()) {
-                Log.w(TAG, "🏠 ❌ No local poems available for POTD")
-                return@withContext null
-            }
-            
-            // Use current date as seed for consistent daily selection
-            val calendar = Calendar.getInstance()
-            val dayOfYear = calendar.get(Calendar.DAY_OF_YEAR)
-            val year = calendar.get(Calendar.YEAR)
-            val seed = (year * 1000L + dayOfYear).toLong()
-            val random = Random(seed)
-            val selectedIndex = random.nextInt(allPoems.size)
-            
-            val selectedPoem = allPoems[selectedIndex]
-            Log.d(TAG, "🏠 ✅ Selected local POTD: '${selectedPoem.title}' by ${selectedPoem.author} (seed=$seed, index=$selectedIndex)")
-            selectedPoem
+            Log.e(TAG, "❌ No poem of the day available from any source")
+            null
         }
     }
     
@@ -329,9 +323,9 @@ class PoemRepository(
                 Log.d(TAG, "🏠 Skipping API search, using local search only")
             }
             
-            // Fallback to local search
+            // Fallback to local search with memory optimization
             Log.d(TAG, "🏠 Performing local search for: '$query'")
-            val poems = poemDao.searchPoems(query.trim())
+            val poems = poemDao.searchPoems(query.trim()) // Already limited to 100 results
             Log.d(TAG, "🏠 Local search found ${poems.size} poems")
             
             val localResults = poems.map { poem ->

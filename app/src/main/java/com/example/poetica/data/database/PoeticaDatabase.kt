@@ -10,7 +10,7 @@ import com.example.poetica.data.model.Poem
 
 @Database(
     entities = [Poem::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -28,7 +28,9 @@ abstract class PoeticaDatabase : RoomDatabase() {
                     context.applicationContext,
                     PoeticaDatabase::class.java,
                     "poetica_database"
-                ).build()
+                ).createFromAsset("databases/poetica_poems.db")
+                .fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }

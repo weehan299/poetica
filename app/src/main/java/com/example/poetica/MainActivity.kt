@@ -35,13 +35,14 @@ class MainActivity : ComponentActivity() {
         // Initialize repository with API integration
         val database = PoeticaDatabase.getDatabase(this)
         val config = PoeticaConfig.getInstance(this)
-        
+
         // Configure API URL - now using actual machine IP for reliable connectivity
         Log.d("MainActivity", "🔧 Configuring API URL for current environment...")
-        Log.i("MainActivity", "🌐 Using machine IP address for reliable emulator/device connectivity")
+
+        config.useProductionApi()  // Force production API change this if you want to use local host api
         config.logCurrentConfig()
         
-        val apiService = ApiConfig.createApiService(config.apiBaseUrl)
+        val apiService = ApiConfig.createApiService(this)
         
         repository = PoemRepository(
             poemDao = database.poemDao(),

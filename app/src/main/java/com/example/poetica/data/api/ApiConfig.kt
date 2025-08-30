@@ -1,6 +1,8 @@
 package com.example.poetica.data.api
 
+import android.content.Context
 import android.util.Log
+import com.example.poetica.data.config.PoeticaConfig
 import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -15,8 +17,7 @@ object ApiConfig {
     
     private const val TAG = "ApiConfig"
     
-    // API Configuration - Using actual machine IP for reliable emulator access
-    const val DEFAULT_BASE_URL = "http://172.30.28.71:8000"
+    // API Configuration - Timeouts
     const val CONNECT_TIMEOUT_SECONDS = 10L
     const val READ_TIMEOUT_SECONDS = 30L
     const val WRITE_TIMEOUT_SECONDS = 30L
@@ -68,10 +69,19 @@ object ApiConfig {
         .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .build()
     
-    fun createApiService(baseUrl: String = DEFAULT_BASE_URL): PoeticaApiService {
-        val effectiveBaseUrl = if (baseUrl.isNotBlank()) baseUrl else DEFAULT_BASE_URL
+    fun createApiService(context: Context? = null, customBaseUrl: String? = null): PoeticaApiService {
+        val effectiveBaseUrl = when {
+            !customBaseUrl.isNullOrBlank() -> customBaseUrl
+            context != null -> PoeticaConfig.getInstance(context).apiBaseUrl
+            else -> PoeticaConfig.PRODUCTION_API_BASE_URL // Fallback to production
+        }
         
         Log.d(TAG, "🔧 Creating API service with base URL: $effectiveBaseUrl")
+        Log.d(TAG, "🔧 Source: ${when {
+            !customBaseUrl.isNullOrBlank() -> "Custom URL"
+            context != null -> "PoeticaConfig (${PoeticaConfig.getInstance(context).getCurrentEnvironment()})"
+            else -> "Fallback to Production"
+        }}")
         Log.d(TAG, "🔧 Timeouts - Connect: ${CONNECT_TIMEOUT_SECONDS}s, Read: ${READ_TIMEOUT_SECONDS}s, Write: ${WRITE_TIMEOUT_SECONDS}s")
         
         val retrofit = Retrofit.Builder()
@@ -84,5 +94,11 @@ object ApiConfig {
         Log.d(TAG, "✅ API service created successfully")
         
         return apiService
+    }
+    
+    @Deprecated("Use createApiService(context) for better configuration management", 
+                ReplaceWith("createApiService(context, baseUrl)"))
+    fun createApiService(baseUrl: String): PoeticaApiService {
+        return createApiService(null, baseUrl)
     }
 }
