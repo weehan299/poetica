@@ -3,8 +3,10 @@ package com.example.poetica.ui.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.poetica.data.model.Author
 import com.example.poetica.data.model.Poem
 import com.example.poetica.data.model.SearchResult
+import com.example.poetica.data.model.SearchResponse
 import com.example.poetica.data.repository.PoemRepository
 // SearchEngine import removed - now using repository.searchPoems() for API integration
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,9 +18,12 @@ data class DiscoverUiState(
     val poems: List<Poem> = emptyList(),
     val searchQuery: String = "",
     val searchResults: List<SearchResult> = emptyList(),
+    val searchAuthors: List<Author> = emptyList(),
+    val searchPoems: List<SearchResult> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null
 )
+
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class DiscoverViewModel(
@@ -51,28 +56,31 @@ class DiscoverViewModel(
         .flatMapLatest { query ->
             if (query.isBlank()) {
                 Log.d(TAG, "🔎 Empty query, returning empty results")
-                flowOf(emptyList())
+                flowOf(SearchResponse())
             } else {
                 Log.d(TAG, "🔎 Starting search for: '$query'")
                 repository.searchPoems(query.trim())
-                    .onEach { results ->
-                        Log.d(TAG, "🔎 Search results received: ${results.size} items for query '$query'")
-                        if (results.isNotEmpty()) {
-                            Log.d(TAG, "🔎 First few results: ${results.take(3).map { "'${it.poem.title}' by ${it.poem.author}" }}")
+                    .onEach { searchResponse ->
+                        Log.d(TAG, "🔎 Search results received: ${searchResponse.authors.size} authors, ${searchResponse.poems.size} poems for query '$query'")
+                        if (searchResponse.authors.isNotEmpty()) {
+                            Log.d(TAG, "🔎 First few authors: ${searchResponse.authors.take(3).map { "'${it.name}' (${it.poemCount} poems)" }}")
+                        }
+                        if (searchResponse.poems.isNotEmpty()) {
+                            Log.d(TAG, "🔎 First few poems: ${searchResponse.poems.take(3).map { "'${it.poem.title}' by ${it.poem.author}" }}")
                         }
                     }
                     .catch { throwable ->
                         // Log error but don't break the UI
                         Log.w(TAG, "❌ Search failed for query: '$query'", throwable)
                         Log.w(TAG, "❌ Error type: ${throwable.javaClass.simpleName}, message: ${throwable.message}")
-                        emit(emptyList()) 
+                        emit(SearchResponse()) 
                     }
             }
         }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
+            initialValue = SearchResponse()
         )
     
     val uiState: StateFlow<DiscoverUiState> = combine(
@@ -81,11 +89,19 @@ class DiscoverViewModel(
         searchResults,
         _isLoading,
         _error
-    ) { poems, searchQuery, searchResults, isLoading, error ->
+    ) { values ->
+        val poems = values[0] as List<Poem>
+        val searchQuery = values[1] as String
+        val searchResponse = values[2] as SearchResponse
+        val isLoading = values[3] as Boolean
+        val error = values[4] as String?
+        
         DiscoverUiState(
             poems = poems,
             searchQuery = searchQuery,
-            searchResults = searchResults,
+            searchResults = searchResponse.poems, // Keep for backward compatibility if needed
+            searchAuthors = searchResponse.authors,
+            searchPoems = searchResponse.poems,
             isLoading = isLoading,
             error = error
         )
@@ -127,4 +143,5 @@ class DiscoverViewModel(
             }
         }
     }
+    
 }

@@ -241,12 +241,12 @@ class PoemRepository(
     // Full content version - only when needed
     fun getPoemsByAuthor(author: String): Flow<List<Poem>> = poemDao.getPoemsByAuthor(author)
     
-    suspend fun searchPoems(query: String): Flow<List<SearchResult>> = flow {
+    suspend fun searchPoems(query: String): Flow<SearchResponse> = flow {
         Log.d(TAG, "🔍 searchPoems() called with query: '$query'")
         
         if (query.isBlank()) {
             Log.d(TAG, "🔍 Empty query, returning empty results")
-            emit(emptyList())
+            emit(SearchResponse())
             return@flow
         }
         
@@ -266,14 +266,14 @@ class PoemRepository(
                     if (response.isSuccessful && response.body() != null) {
                         val responseBody = response.body()!!
                         Log.d(TAG, "🌐 API response body received, parsing...")
-                        val apiResults = ApiToDomainMapper.mapApiSearchResponseToSearchResults(responseBody)
-                        Log.d(TAG, "🌐 API search results: ${apiResults.size} items found")
+                        val apiSearchResponse = ApiToDomainMapper.mapApiSearchResponseToSearchResponse(responseBody)
+                        Log.d(TAG, "🌐 API search results: ${apiSearchResponse.authors.size} authors, ${apiSearchResponse.poems.size} poems found")
                         
-                        if (apiResults.isNotEmpty()) {
+                        if (apiSearchResponse.authors.isNotEmpty() || apiSearchResponse.poems.isNotEmpty()) {
                             // Cache metadata only for memory efficiency
-                            cacheApiMetadata(apiResults.map { it.poem })
-                            Log.d(TAG, "🌐 ✅ Using API results (${apiResults.size} items)")
-                            return@withContext apiResults
+                            cacheApiMetadata(apiSearchResponse.poems.map { it.poem })
+                            Log.d(TAG, "🌐 ✅ Using API results (${apiSearchResponse.authors.size} authors, ${apiSearchResponse.poems.size} poems)")
+                            return@withContext apiSearchResponse
                         } else {
                             Log.d(TAG, "🌐 API returned empty results, falling back to local")
                         }
@@ -295,7 +295,7 @@ class PoemRepository(
             val poems = poemDao.searchPoems(query.trim()) // Already limited to 100 results
             Log.d(TAG, "🏠 Local search found ${poems.size} poems")
             
-            val localResults = poems.map { poem ->
+            val localPoemResults = poems.map { poem ->
                 SearchResult(
                     poem = poem,
                     matchType = determineMatchType(poem, query),
@@ -303,8 +303,26 @@ class PoemRepository(
                 )
             }.sortedByDescending { it.relevanceScore }
             
-            Log.d(TAG, "🏠 ✅ Returning local results (${localResults.size} items)")
-            localResults
+            // For local search, extract unique authors from poem results
+            val localAuthors = localPoemResults
+                .map { it.poem.author }
+                .distinct()
+                .map { authorName ->
+                    Author(
+                        name = authorName,
+                        poemCount = localPoemResults.count { it.poem.author == authorName }
+                    )
+                }
+                .sortedByDescending { it.poemCount }
+            
+            val localSearchResponse = SearchResponse(
+                authors = localAuthors,
+                poems = localPoemResults,
+                query = query
+            )
+            
+            Log.d(TAG, "🏠 ✅ Returning local results (${localAuthors.size} authors, ${localPoemResults.size} poems)")
+            localSearchResponse
         }
         emit(results)
     }

@@ -26,6 +26,13 @@ object ApiToDomainMapper {
         )
     }
     
+    fun mapApiAuthorResultToAuthor(apiAuthorResult: ApiAuthorResult): Author {
+        return Author(
+            name = apiAuthorResult.name,
+            poemCount = apiAuthorResult.poemCount
+        )
+    }
+    
     fun mapApiPoemSearchResultToSearchResult(apiPoemSearchResult: ApiPoemSearchResult): SearchResult {
         // Note: Using contentPreview for search results (truncated for performance)
         // Full content will be fetched on-demand when user clicks to read the poem
@@ -52,9 +59,25 @@ object ApiToDomainMapper {
             results.add(mapApiPoemSearchResultToSearchResult(poemResult))
         }
         
-        // TODO: Add author results when needed for expanded search features
-        
         return results.sortedByDescending { it.relevanceScore }
+    }
+    
+    fun mapApiSearchResponseToSearchResponse(apiResponse: ApiSearchResponse): SearchResponse {
+        // Map authors from API response
+        val authors = apiResponse.results.authors.map { authorResult ->
+            mapApiAuthorResultToAuthor(authorResult)
+        }
+        
+        // Map poem results
+        val poems = apiResponse.results.poems.map { poemResult ->
+            mapApiPoemSearchResultToSearchResult(poemResult)
+        }.sortedByDescending { it.relevanceScore }
+        
+        return SearchResponse(
+            authors = authors,
+            poems = poems,
+            query = apiResponse.query
+        )
     }
     
     

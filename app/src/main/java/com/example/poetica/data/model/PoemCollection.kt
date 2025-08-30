@@ -24,6 +24,12 @@ data class SearchResult(
     val relevanceScore: Float = 0f
 )
 
+data class SearchResponse(
+    val authors: List<Author> = emptyList(),
+    val poems: List<SearchResult> = emptyList(),
+    val query: String = ""
+)
+
 enum class MatchType {
     TITLE_EXACT,
     TITLE_PARTIAL,
