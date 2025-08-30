@@ -13,7 +13,8 @@ data class HomeUiState(
     val authors: List<Author> = emptyList(),
     val isLoading: Boolean = false,
     val authorsLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val isRandomMode: Boolean = false
 )
 
 class HomeViewModel(
@@ -25,20 +26,23 @@ class HomeViewModel(
     private val _error = MutableStateFlow<String?>(null)
     private val _poemOfTheDay = MutableStateFlow<Poem?>(null)
     private val _authors = MutableStateFlow<List<Author>>(emptyList())
+    private val _isRandomMode = MutableStateFlow(false)
     
     val uiState: StateFlow<HomeUiState> = combine(
         _poemOfTheDay,
         _authors,
         _isLoading,
         _authorsLoading,
-        _error
-    ) { poemOfTheDay, authors, isLoading, authorsLoading, error ->
+        _error,
+        _isRandomMode
+    ) { flows ->
         HomeUiState(
-            poemOfTheDay = poemOfTheDay,
-            authors = authors,
-            isLoading = isLoading,
-            authorsLoading = authorsLoading,
-            error = error
+            poemOfTheDay = flows[0] as Poem?,
+            authors = flows[1] as List<Author>,
+            isLoading = flows[2] as Boolean,
+            authorsLoading = flows[3] as Boolean,
+            error = flows[4] as String?,
+            isRandomMode = flows[5] as Boolean
         )
     }.stateIn(
         scope = viewModelScope,
@@ -52,6 +56,22 @@ class HomeViewModel(
     
     fun refreshPoemOfTheDay() {
         loadPoemOfTheDay()
+    }
+    
+    fun showRandomPoem() {
+        viewModelScope.launch {
+            try {
+                val randomPoem = repository.getRandomLocalPoem()
+                if (randomPoem != null) {
+                    _poemOfTheDay.value = randomPoem
+                    _isRandomMode.value = true
+                } else {
+                    _error.value = "No random poems available"
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to load random poem: ${e.message}"
+            }
+        }
     }
     
     private fun initializeData() {
@@ -74,6 +94,7 @@ class HomeViewModel(
             try {
                 val poem = repository.getPoemOfTheDay()
                 _poemOfTheDay.value = poem
+                _isRandomMode.value = false // Reset to poem of the day mode
             } catch (e: Exception) {
                 _error.value = "Failed to load poem of the day: ${e.message}"
             }

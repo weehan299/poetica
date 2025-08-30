@@ -138,4 +138,7 @@ interface PoemDao {
     
     @Query("SELECT COUNT(*) FROM poems")
     suspend fun getPoemCount(): Int
+    
+    @Query("SELECT * FROM poems ORDER BY RANDOM() LIMIT 1")
+    suspend fun getRandomPoem(): Poem?
 }

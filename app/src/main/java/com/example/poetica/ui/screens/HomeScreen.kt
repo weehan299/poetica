@@ -1,14 +1,16 @@
 package com.example.poetica.ui.screens
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -127,7 +129,8 @@ fun HomeScreen(
                 PoemOfTheDayCard(
                     poem = poem,
                     onReadClick = { onPoemClick(poem.id) },
-                    onRefreshClick = viewModel::refreshPoemOfTheDay
+                    onShuffleClick = viewModel::showRandomPoem,
+                    isRandomMode = uiState.isRandomMode
                 )
             }
         }
@@ -186,66 +189,84 @@ fun HomeScreen(
 fun PoemOfTheDayCard(
     poem: Poem,
     onReadClick: () -> Unit,
-    onRefreshClick: () -> Unit,
+    onShuffleClick: () -> Unit,
+    isRandomMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(280.dp)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(24.dp)
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         )
     ) {
         Column(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // Header with title and action buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Poem of the Day",
+                    text = if (isRandomMode) "Random Poem Shuffle" else "Poem of the Day",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     fontWeight = FontWeight.Medium
                 )
                 
                 IconButton(
-                    onClick = onRefreshClick,
-                    modifier = Modifier.size(20.dp)
+                    onClick = onShuffleClick,
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
                         Icons.Default.Refresh,
-                        contentDescription = "Refresh poem",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        contentDescription = "Shuffle poem",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = poem.title,
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
+            // Poem title and author - centered content
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
-            )
+            ) {
+                Text(
+                    text = poem.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text(
+                    text = "by ${poem.author}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = "by ${poem.author}",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
+            // Read button
             Button(
                 onClick = onReadClick,
                 modifier = Modifier.fillMaxWidth(),
@@ -254,15 +275,15 @@ fun PoemOfTheDayCard(
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Icon(
-                    Icons.Filled.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                Text(
+                    text = "Read",
+                    style = MaterialTheme.typography.labelLarge
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Read Now",
-                    style = MaterialTheme.typography.labelLarge
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }

@@ -216,6 +216,25 @@ class PoemRepository(
         }
     }
     
+    suspend fun getRandomLocalPoem(): Poem? {
+        Log.d(TAG, "🎲 getRandomLocalPoem() called")
+        
+        return withContext(Dispatchers.IO) {
+            try {
+                val randomPoem = poemDao.getRandomPoem()
+                if (randomPoem != null) {
+                    Log.d(TAG, "🎲 ✅ Selected random local poem: '${randomPoem.title}' by ${randomPoem.author}")
+                    return@withContext randomPoem
+                } else {
+                    Log.w(TAG, "🎲 ❌ No random poem found in local database")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "🎲 ❌ Failed to get random local poem", e)
+            }
+            null
+        }
+    }
+    
     // Memory-optimized version - metadata only for listings
     fun getPoemsByAuthorMetadata(author: String): Flow<List<Poem>> = poemDao.getPoemsByAuthorMetadata(author)
     
