@@ -20,9 +20,13 @@ import androidx.navigation.compose.rememberNavController
 import com.example.poetica.ui.screens.HomeScreen
 import com.example.poetica.ui.screens.DiscoverScreen
 import com.example.poetica.ui.screens.PoemReaderScreen
+import com.example.poetica.ui.screens.AuthorsScreen
+import com.example.poetica.ui.screens.AuthorPoemsScreen
 import com.example.poetica.ui.viewmodel.HomeViewModel
 import com.example.poetica.ui.viewmodel.DiscoverViewModel
 import com.example.poetica.ui.viewmodel.PoemReaderViewModel
+import com.example.poetica.ui.viewmodel.AuthorsViewModel
+import com.example.poetica.ui.viewmodel.AuthorPoemsViewModel
 
 sealed class PoeticaDestinations(
     val route: String,
@@ -33,9 +37,12 @@ sealed class PoeticaDestinations(
     object Home : PoeticaDestinations("home", "Home", Icons.Filled.Home, Icons.Outlined.Home)
     object Discover : PoeticaDestinations("discover", "Search", Icons.Filled.Search, Icons.Outlined.Search)
     object PoemReader : PoeticaDestinations("poem_reader", "Reader", Icons.Filled.Home, Icons.Outlined.Home)
+    object Authors : PoeticaDestinations("authors", "Authors", Icons.Filled.Home, Icons.Outlined.Home)
+    object AuthorPoems : PoeticaDestinations("author_poems", "Author Poems", Icons.Filled.Home, Icons.Outlined.Home)
     
     companion object {
         const val POEM_ID_KEY = "poem_id"
+        const val AUTHOR_NAME_KEY = "author_name"
         val bottomNavItems = listOf(Home, Discover)
     }
 }
@@ -46,16 +53,20 @@ fun PoeticaNavigation(
     navController: NavHostController = rememberNavController(),
     homeViewModel: HomeViewModel,
     discoverViewModel: DiscoverViewModel,
-    poemReaderViewModelFactory: (String) -> PoemReaderViewModel
+    authorsViewModel: AuthorsViewModel,
+    poemReaderViewModelFactory: (String) -> PoemReaderViewModel,
+    authorPoemsViewModelFactory: (String) -> AuthorPoemsViewModel
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    val isPoemReaderVisible = currentDestination?.route?.contains("poem_reader") == true
+    val shouldHideBottomBar = currentDestination?.route?.let { route ->
+        route.contains("poem_reader") || route.contains("authors") || route.contains("author_poems")
+    } == true
 
     Scaffold(
         modifier = modifier,
         bottomBar = {
-            if (!isPoemReaderVisible) {
+            if (!shouldHideBottomBar) {
                 NavigationBar {
                     PoeticaDestinations.bottomNavItems.forEach { destination ->
                         val isSelected = currentDestination?.hierarchy?.any { 
@@ -97,6 +108,12 @@ fun PoeticaNavigation(
                     viewModel = homeViewModel,
                     onPoemClick = { poemId ->
                         navController.navigate("${PoeticaDestinations.PoemReader.route}/$poemId")
+                    },
+                    onAuthorClick = { authorName ->
+                        navController.navigate("${PoeticaDestinations.AuthorPoems.route}/$authorName")
+                    },
+                    onSeeAllAuthorsClick = {
+                        navController.navigate(PoeticaDestinations.Authors.route)
                     }
                 )
             }
@@ -118,6 +135,33 @@ fun PoeticaNavigation(
                     viewModel = viewModel,
                     onBackClick = {
                         navController.popBackStack()
+                    }
+                )
+            }
+            
+            composable(PoeticaDestinations.Authors.route) {
+                AuthorsScreen(
+                    viewModel = authorsViewModel,
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+                    onAuthorClick = { authorName ->
+                        navController.navigate("${PoeticaDestinations.AuthorPoems.route}/$authorName")
+                    }
+                )
+            }
+            
+            composable("${PoeticaDestinations.AuthorPoems.route}/{${PoeticaDestinations.AUTHOR_NAME_KEY}}") { backStackEntry ->
+                val authorName = backStackEntry.arguments?.getString(PoeticaDestinations.AUTHOR_NAME_KEY) ?: ""
+                val viewModel = authorPoemsViewModelFactory(authorName)
+                
+                AuthorPoemsScreen(
+                    viewModel = viewModel,
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+                    onPoemClick = { poemId ->
+                        navController.navigate("${PoeticaDestinations.PoemReader.route}/$poemId")
                     }
                 )
             }

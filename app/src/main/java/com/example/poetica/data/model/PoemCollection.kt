@@ -32,3 +32,19 @@ enum class MatchType {
     CONTENT,
     TAG
 }
+
+data class Author(
+    val name: String,
+    val poemCount: Int,
+    val displayInitials: String = name.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString("")
+)
+
+// Lightweight poem metadata for memory-efficient caching and listings
+data class PoemMetadata(
+    val id: String,
+    val title: String,
+    val author: String,
+    val sourceType: SourceType = SourceType.BUNDLED,
+    val firstLine: String? = null, // Optional preview
+    val wordCount: Int = 0 // Lightweight content indicator
+)

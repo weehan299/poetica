@@ -1,7 +1,10 @@
 package com.example.poetica.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -12,9 +15,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.poetica.data.model.Poem
+import com.example.poetica.data.model.Author
 import com.example.poetica.ui.viewmodel.HomeViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -24,6 +29,8 @@ import java.util.Locale
 fun HomeScreen(
     viewModel: HomeViewModel,
     onPoemClick: (String) -> Unit,
+    onAuthorClick: (String) -> Unit = {},
+    onSeeAllAuthorsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -124,6 +131,53 @@ fun HomeScreen(
                 )
             }
         }
+        
+        // Browse by Author Section
+        if (uiState.authors.isNotEmpty()) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Browse by Author",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    TextButton(onClick = onSeeAllAuthorsClick) {
+                        Text("See all")
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                if (uiState.authorsLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                } else {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
+                    ) {
+                        items(uiState.authors) { author ->
+                            AuthorChip(
+                                author = author,
+                                onClick = { onAuthorClick(author.name) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -211,6 +265,65 @@ fun PoemOfTheDayCard(
                     style = MaterialTheme.typography.labelLarge
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun AuthorChip(
+    author: Author,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.width(120.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Avatar with initials
+            Surface(
+                modifier = Modifier.size(36.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = author.displayInitials,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Author name
+            Text(
+                text = author.name,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center
+            )
+            
+            // Poem count
+            Text(
+                text = "${author.poemCount} poems",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

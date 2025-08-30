@@ -23,6 +23,8 @@ import com.example.poetica.ui.theme.PoeticaTheme
 import com.example.poetica.ui.viewmodel.HomeViewModel
 import com.example.poetica.ui.viewmodel.DiscoverViewModel
 import com.example.poetica.ui.viewmodel.PoemReaderViewModel
+import com.example.poetica.ui.viewmodel.AuthorsViewModel
+import com.example.poetica.ui.viewmodel.AuthorPoemsViewModel
 
 class MainActivity : ComponentActivity() {
     
@@ -53,22 +55,33 @@ class MainActivity : ComponentActivity() {
         
         // Initialize data and check API health
         lifecycleScope.launch {
-            repository.initializeWithBundledPoems()
-            
-            if (config.useRemoteData) {
-                Log.d("MainActivity", "🏥 Performing API health check...")
-                val isHealthy = repository.checkApiHealth()
-                if (!isHealthy) {
-                    Log.w("MainActivity", "⚠️ API health check failed - API will retry on each search attempt")
-                    Log.w("MainActivity", "💡 Make sure your API server is running: uvicorn main:app --reload --host 0.0.0.0 --port 8000")
-                    Log.w("MainActivity", "💡 API URL configured as: ${config.apiBaseUrl}")
-                    // Don't permanently disable API - let individual search attempts retry
-                    // config.isApiEnabled = false  // <-- REMOVED: This was preventing retries
+            try {
+                Log.d("MainActivity", "🚀 Starting app initialization...")
+                
+                // Initialize database first - this is critical for app functionality
+                repository.initializeWithBundledPoems()
+                
+                // API health check is secondary - don't block app startup
+                if (config.useRemoteData) {
+                    Log.d("MainActivity", "🏥 Performing API health check...")
+                    val isHealthy = repository.checkApiHealth()
+                    if (!isHealthy) {
+                        Log.w("MainActivity", "⚠️ API health check failed - API will retry on each search attempt")
+                        Log.w("MainActivity", "💡 Make sure your API server is running: uvicorn main:app --reload --host 0.0.0.0 --port 8000")
+                        Log.w("MainActivity", "💡 API URL configured as: ${config.apiBaseUrl}")
+                        // Don't permanently disable API - let individual search attempts retry
+                        // config.isApiEnabled = false  // <-- REMOVED: This was preventing retries
+                    } else {
+                        Log.d("MainActivity", "✅ API is healthy, remote data enabled")
+                    }
                 } else {
-                    Log.d("MainActivity", "✅ API is healthy, remote data enabled")
+                    Log.d("MainActivity", "📱 Using local data only (remote data disabled in config)")
                 }
-            } else {
-                Log.d("MainActivity", "📱 Using local data only (remote data disabled in config)")
+                
+                Log.d("MainActivity", "✅ App initialization completed successfully")
+            } catch (e: Exception) {
+                Log.e("MainActivity", "❌ App initialization failed", e)
+                // Don't crash the app - let it continue with best effort
             }
         }
         
@@ -89,16 +102,23 @@ fun PoeticaApp(
     
     val homeViewModel = remember { HomeViewModel(repository) }
     val discoverViewModel = remember { DiscoverViewModel(repository) }
+    val authorsViewModel = remember { AuthorsViewModel(repository) }
     
     val poemReaderViewModelFactory: (String) -> PoemReaderViewModel = { poemId ->
         PoemReaderViewModel(repository, poemId)
+    }
+    
+    val authorPoemsViewModelFactory: (String) -> AuthorPoemsViewModel = { authorName ->
+        AuthorPoemsViewModel(authorName, repository)
     }
     
     PoeticaNavigation(
         navController = navController,
         homeViewModel = homeViewModel,
         discoverViewModel = discoverViewModel,
+        authorsViewModel = authorsViewModel,
         poemReaderViewModelFactory = poemReaderViewModelFactory,
+        authorPoemsViewModelFactory = authorPoemsViewModelFactory,
         modifier = modifier.fillMaxSize()
     )
 }
