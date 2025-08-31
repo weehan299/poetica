@@ -148,6 +148,9 @@ interface PoemDao {
     @Query("SELECT COUNT(*) FROM poems")
     suspend fun getPoemCount(): Int
     
+    @Query("SELECT EXISTS(SELECT 1 FROM poems WHERE author = :author)")
+    suspend fun hasPoemsByAuthor(author: String): Boolean
+    
     @Query("SELECT * FROM poems ORDER BY RANDOM() LIMIT 1")
     suspend fun getRandomPoem(): Poem?
 }

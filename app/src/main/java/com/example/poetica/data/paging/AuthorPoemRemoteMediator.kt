@@ -170,11 +170,10 @@ class AuthorPoemRemoteMediator(
     private suspend fun hasDataForAuthor(): Boolean {
         return try {
             Log.d(TAG, "🔍 Checking local data for author '$authorName'")
-            // Use proper author query instead of search - we want poems BY this author, not mentioning them
-            val localPoems = database.poemDao().getPoemsByAuthorMetadata(authorName).first()
-            val localPoemsCount = localPoems.size
-            Log.d(TAG, "📊 Found $localPoemsCount local poems for author '$authorName'")
-            localPoemsCount > 0
+            // Use efficient EXISTS query instead of materializing all poems into memory
+            val hasLocalData = database.poemDao().hasPoemsByAuthor(authorName)
+            Log.d(TAG, "📊 Author '$authorName' has local data: $hasLocalData")
+            hasLocalData
         } catch (e: Exception) {
             Log.w(TAG, "❌ Error checking local data for author '$authorName'", e)
             false

@@ -36,7 +36,7 @@ class DiscoverViewModel(
     private val _isLoading = MutableStateFlow(false)
     private val _error = MutableStateFlow<String?>(null)
     
-    private val poems = repository.getAllPoems()
+    private val poems = repository.getAllPoemsMetadata()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

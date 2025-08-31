@@ -90,7 +90,13 @@ class PoemRepository(
         }
     }
     
-    fun getAllPoems(): Flow<List<Poem>> = poemDao.getAllPoems()
+    @Deprecated("Memory-intensive: loads all poems with full content. Use getAllPoemsMetadata() or paging instead.", 
+        ReplaceWith("getAllPoemsMetadata()"))
+    fun getAllPoems(): Flow<List<Poem>> {
+        Log.w(TAG, "⚠️ getAllPoems() called - this loads ${33651}+ poems with full content into memory!")
+        Log.w(TAG, "⚠️ Consider using getAllPoemsMetadata() or paging for better memory efficiency")
+        return poemDao.getAllPoems()
+    }
     
     // Memory-optimized methods
     fun getAllPoemsMetadata(): Flow<List<Poem>> = poemDao.getPoemsMetadataFlow()
@@ -125,6 +131,35 @@ class PoemRepository(
                     "..." + localPoem.content.takeLast(50).replace("\n", "\\n")
                 } else ""
                 Log.d(TAG, "📝 DB content: \"$preview$suffix\"")
+                
+                // Check if this is preview content that needs upgrading
+                if (isPreviewContent(localPoem) && shouldUseRemoteData()) {
+                    Log.d(TAG, "🔄 Detected preview content, attempting to upgrade from API...")
+                    try {
+                        val response = apiService.getPoem(id)
+                        Log.d(TAG, "🌐 Content upgrade API response: isSuccessful=${response.isSuccessful}, code=${response.code()}")
+                        
+                        if (response.isSuccessful && response.body() != null) {
+                            val apiPoem = response.body()!!
+                            val upgradedPoem = ApiToDomainMapper.mapApiPoemToPoem(apiPoem)
+                            
+                            // Update the local database with full content
+                            poemDao.updatePoem(upgradedPoem)
+                            
+                            // Cache the upgraded content
+                            cacheRecentPoem(upgradedPoem)
+                            
+                            Log.d(TAG, "🔄 ✅ Successfully upgraded poem content from ${localPoem.content.length} to ${upgradedPoem.content.length} chars")
+                            Log.d(TAG, "📝 Upgraded content preview: \"${upgradedPoem.content.take(100).replace("\n", "\\n")}...\"")
+                            
+                            return@withContext upgradedPoem
+                        } else {
+                            Log.w(TAG, "🔄 ⚠️ Failed to upgrade content from API, using local preview")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "🔄 ❌ Error upgrading content from API: ${e.message}", e)
+                    }
+                }
                 
                 return@withContext localPoem
             }
@@ -247,7 +282,13 @@ class PoemRepository(
     fun getPoemsByAuthorMetadata(author: String): Flow<List<Poem>> = poemDao.getPoemsByAuthorMetadata(author)
     
     // Full content version - only when needed
-    fun getPoemsByAuthor(author: String): Flow<List<Poem>> = poemDao.getPoemsByAuthor(author)
+    @Deprecated("Memory-intensive: loads all poems with full content for an author. Use getPoemsByAuthorMetadata() or paging instead.",
+        ReplaceWith("getPoemsByAuthorMetadata(author)"))
+    fun getPoemsByAuthor(author: String): Flow<List<Poem>> {
+        Log.w(TAG, "⚠️ getPoemsByAuthor() called for '$author' - this loads all poems with full content into memory!")
+        Log.w(TAG, "⚠️ Consider using getPoemsByAuthorMetadata() or getAuthorPoemsPagedFlow() for better memory efficiency")
+        return poemDao.getPoemsByAuthor(author)
+    }
     
     // Paging 3 support with RemoteMediator for hybrid local + remote data
     @OptIn(ExperimentalPagingApi::class)
@@ -669,5 +710,37 @@ class PoemRepository(
         return "Metadata: ${apiMetadataCache.size}/${MAX_CACHE_SIZE}, Recent: ${recentPoemCache.size}/$maxRecentCacheSize"
     }
     
+    private fun isPreviewContent(poem: Poem): Boolean {
+        // Detect if this poem contains only preview content (first line) and needs full content upgrade
+        val contentLength = poem.content.length
+        val lineCount = poem.content.count { it == '\n' } + 1
+        val wordCount = poem.content.split("\\s+".toRegex()).size
+        
+        // Consider it preview content if:
+        // 1. It's from a remote source AND
+        // 2. It's very short (< 100 chars) AND only 1 line AND has few words (< 15)
+        // 3. OR it appears to end abruptly (no punctuation at end, suggesting truncation)
+        val isShortSingleLine = contentLength < 100 && lineCount == 1 && wordCount < 15
+        val trimmedContent = poem.content.trim()
+        val appearsIncomplete = trimmedContent.isNotEmpty() && 
+                               !trimmedContent.endsWith('.') && 
+                               !trimmedContent.endsWith('!') && 
+                               !trimmedContent.endsWith('?') && 
+                               !trimmedContent.endsWith(':') && 
+                               !trimmedContent.endsWith(';') && 
+                               !trimmedContent.endsWith('"') && 
+                               !trimmedContent.endsWith(')') && 
+                               !trimmedContent.endsWith(']') && 
+                               !trimmedContent.endsWith('}')
+        
+        val isLikelyPreview = poem.sourceType == SourceType.REMOTE && 
+                             (isShortSingleLine || (contentLength < 200 && appearsIncomplete))
+        
+        if (isLikelyPreview) {
+            Log.d(TAG, "🔍 Detected preview content for '${poem.title}' - Length: $contentLength, Lines: $lineCount, Words: $wordCount")
+        }
+        
+        return isLikelyPreview
+    }
     
 }
