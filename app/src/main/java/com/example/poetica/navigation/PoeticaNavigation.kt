@@ -123,12 +123,6 @@ fun PoeticaNavigation(
                     viewModel = discoverViewModel,
                     onPoemClick = { poemId ->
                         navController.navigate("${PoeticaDestinations.PoemReader.route}/$poemId")
-                    },
-                    onAuthorClick = { authorName ->
-                        navController.navigate("${PoeticaDestinations.AuthorPoems.route}/$authorName")
-                    },
-                    onViewAllAuthorsClick = {
-                        navController.navigate(PoeticaDestinations.Authors.route)
                     }
                 )
             }

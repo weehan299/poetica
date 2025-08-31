@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Large data files
+app/src/main/assets/poems_bundle.json
+app/src/main/assets/databases/poetica_poems.db
