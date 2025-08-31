@@ -9,11 +9,12 @@ import android.util.Log
 import com.example.poetica.data.converters.Converters
 import com.example.poetica.data.model.Poem
 import com.example.poetica.data.model.AuthorPoemRemoteKeys
+import com.example.poetica.data.model.RecentSearch
 import java.io.File
 
 @Database(
-    entities = [Poem::class, AuthorPoemRemoteKeys::class],
-    version = 4,
+    entities = [Poem::class, AuthorPoemRemoteKeys::class, RecentSearch::class],
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -21,6 +22,7 @@ abstract class PoeticaDatabase : RoomDatabase() {
     
     abstract fun poemDao(): PoemDao
     abstract fun authorPoemRemoteKeysDao(): AuthorPoemRemoteKeysDao
+    abstract fun recentSearchDao(): RecentSearchDao
     
     companion object {
         @Volatile

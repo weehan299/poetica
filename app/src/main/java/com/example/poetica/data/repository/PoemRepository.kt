@@ -39,6 +39,8 @@ class PoemRepository(
     private val config: PoeticaConfig? = null
 ) {
     
+    private val recentSearchDao = database.recentSearchDao()
+    
     companion object {
         private const val TAG = "PoemRepository"
         private const val MAX_CACHE_SIZE = 100
@@ -741,6 +743,49 @@ class PoemRepository(
         }
         
         return isLikelyPreview
+    }
+    
+    // Recent Search Methods
+    fun getRecentSearches(limit: Int = 15): Flow<List<RecentSearch>> {
+        return recentSearchDao.getRecentSearches(limit)
+    }
+    
+    suspend fun saveRecentSearch(query: String, resultCount: Int) {
+        withContext(Dispatchers.IO) {
+            try {
+                // Check if this query already exists
+                if (recentSearchDao.searchExists(query)) {
+                    // Remove the old entry so we can add it as most recent
+                    recentSearchDao.deleteSearchByQuery(query)
+                }
+                
+                val recentSearch = RecentSearch(
+                    id = "${System.currentTimeMillis()}_${query.hashCode()}",
+                    query = query,
+                    searchDate = System.currentTimeMillis(),
+                    resultCount = resultCount
+                )
+                
+                recentSearchDao.insertRecentSearch(recentSearch)
+                // Keep only recent searches to prevent unlimited growth
+                recentSearchDao.keepOnlyRecentSearches(15)
+                
+                Log.d(TAG, "💾 Saved recent search: '$query' with $resultCount results")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Failed to save recent search: '$query'", e)
+            }
+        }
+    }
+    
+    suspend fun clearRecentSearches() {
+        withContext(Dispatchers.IO) {
+            try {
+                recentSearchDao.clearAllRecentSearches()
+                Log.d(TAG, "🗑️ Cleared all recent searches")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Failed to clear recent searches", e)
+            }
+        }
     }
     
 }

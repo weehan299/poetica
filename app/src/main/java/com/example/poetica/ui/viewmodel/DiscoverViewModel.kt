@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.poetica.data.model.Poem
+import com.example.poetica.data.model.RecentSearch
 import com.example.poetica.data.model.SearchResult
 import com.example.poetica.data.model.SearchResultItem
 import com.example.poetica.data.repository.PoemRepository
@@ -14,7 +15,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 data class DiscoverUiState(
-    val poems: List<Poem> = emptyList(),
+    val recentSearches: List<RecentSearch> = emptyList(),
     val searchQuery: String = "",
     val mixedSearchResults: List<SearchResultItem> = emptyList(),
     val isLoading: Boolean = false,
@@ -36,7 +37,7 @@ class DiscoverViewModel(
     private val _isLoading = MutableStateFlow(false)
     private val _error = MutableStateFlow<String?>(null)
     
-    private val poems = repository.getAllPoemsMetadata()
+    private val recentSearches = repository.getRecentSearches()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -49,10 +50,15 @@ class DiscoverViewModel(
         .distinctUntilChanged()
         .onEach { query ->
             Log.d(TAG, "🔎 Mixed search query changed: '$query'")
+            // Set loading state when starting a search
+            if (query.isNotBlank()) {
+                _isLoading.value = true
+            }
         }
         .flatMapLatest { query ->
             if (query.isBlank()) {
                 Log.d(TAG, "🔎 Empty query, returning empty mixed results")
+                _isLoading.value = false
                 flowOf(emptyList())
             } else {
                 Log.d(TAG, "🔎 Starting remote-first mixed search for: '$query'")
@@ -61,6 +67,14 @@ class DiscoverViewModel(
                         val authorCount = results.count { it is SearchResultItem.AuthorResult }
                         val poemCount = results.count { it is SearchResultItem.PoemResult }
                         Log.d(TAG, "🔎 ✅ Mixed search completed: ${results.size} total items ($authorCount authors, $poemCount poems) for query '$query'")
+                        
+                        // Clear loading state when search completes
+                        _isLoading.value = false
+                        
+                        // Save the search result to recent searches
+                        if (query.trim().isNotEmpty()) {
+                            saveSearch(query.trim(), results.size)
+                        }
                         
                         if (results.isNotEmpty()) {
                             val summary = results.take(3).map { item ->
@@ -77,6 +91,8 @@ class DiscoverViewModel(
                     .catch { throwable ->
                         // Enhanced error handling with more details
                         Log.e(TAG, "❌ Mixed search failed for query: '$query'", throwable)
+                        // Clear loading state when search fails
+                        _isLoading.value = false
                         when (throwable) {
                             is java.net.SocketTimeoutException -> {
                                 Log.w(TAG, "❌ Network timeout occurred during search")
@@ -103,14 +119,14 @@ class DiscoverViewModel(
         )
     
     val uiState: StateFlow<DiscoverUiState> = combine(
-        poems,
+        recentSearches,
         _searchQuery,
         mixedSearchResults,
         _isLoading,
         _error
-    ) { poems, searchQuery, mixedSearchResults, isLoading, error ->
+    ) { recentSearches, searchQuery, mixedSearchResults, isLoading, error ->
         DiscoverUiState(
-            poems = poems,
+            recentSearches = recentSearches,
             searchQuery = searchQuery,
             mixedSearchResults = mixedSearchResults,
             isLoading = isLoading,
@@ -135,6 +151,34 @@ class DiscoverViewModel(
     fun clearSearch() {
         Log.d(TAG, "🔎 clearSearch() called (previous query: '${_searchQuery.value}')")
         _searchQuery.value = ""
+    }
+    
+    fun searchFromRecentSearch(query: String) {
+        Log.d(TAG, "🔎 searchFromRecentSearch() called: '$query'")
+        _searchQuery.value = query
+    }
+    
+    private fun saveSearch(query: String, resultCount: Int) {
+        viewModelScope.launch {
+            try {
+                repository.saveRecentSearch(query, resultCount)
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Failed to save recent search: '$query'", e)
+            }
+        }
+    }
+    
+    fun clearRecentSearches() {
+        Log.d(TAG, "🗑️ clearRecentSearches() called")
+        viewModelScope.launch {
+            try {
+                repository.clearRecentSearches()
+                Log.d(TAG, "✅ Recent searches cleared")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Failed to clear recent searches", e)
+                _error.value = "Failed to clear recent searches: ${e.message}"
+            }
+        }
     }
     
     private fun initializeData() {

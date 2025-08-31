@@ -23,6 +23,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.poetica.data.model.*
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import com.example.poetica.ui.viewmodel.DiscoverViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,21 +64,6 @@ fun DiscoverScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Searching...")
-                    }
-                }
-            }
-
             uiState.error != null -> {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -88,6 +76,21 @@ fun DiscoverScreen(
                         modifier = Modifier.padding(16.dp),
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
+                }
+            }
+
+            uiState.isLoading && uiState.searchQuery.isNotEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Searching...")
+                    }
                 }
             }
 
@@ -128,17 +131,59 @@ fun DiscoverScreen(
                 }
             }
 
-            else -> {
-                // Browse All Poems
-                if (uiState.poems.isNotEmpty()) {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        items(uiState.poems) { poem ->
-                            PoemListItem(
-                                poem = poem,
-                                onClick = { onPoemClick(poem.id) }
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Loading...")
+                    }
+                }
+            }
+
+            else -> {
+                // Recent Searches
+                if (uiState.recentSearches.isNotEmpty()) {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Recent Searches",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
+                            
+                            TextButton(
+                                onClick = { viewModel.clearRecentSearches() }
+                            ) {
+                                Text(
+                                    "Clear All",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(uiState.recentSearches) { recentSearch ->
+                                RecentSearchItem(
+                                    recentSearch = recentSearch,
+                                    onClick = { viewModel.searchFromRecentSearch(recentSearch.query) }
+                                )
+                            }
                         }
                     }
                 } else {
@@ -146,11 +191,29 @@ fun DiscoverScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            "No poems available",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "No recent searches",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Start by searching for poems or authors above",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
@@ -298,6 +361,89 @@ fun PoemListItem(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+fun RecentSearchItem(
+    recentSearch: RecentSearch,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = recentSearch.query,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(2.dp))
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${recentSearch.resultCount} results",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    Text(
+                        text = " • ",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    Text(
+                        text = formatSearchDate(recentSearch.searchDate),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun formatSearchDate(searchDate: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - searchDate
+    
+    return when {
+        diff < 60 * 1000 -> "Just now"
+        diff < 60 * 60 * 1000 -> "${diff / (60 * 1000)} min ago"
+        diff < 24 * 60 * 60 * 1000 -> "${diff / (60 * 60 * 1000)} hr ago"
+        diff < 7 * 24 * 60 * 60 * 1000 -> "${diff / (24 * 60 * 60 * 1000)} days ago"
+        else -> {
+            val formatter = SimpleDateFormat("MMM d", Locale.getDefault())
+            formatter.format(Date(searchDate))
         }
     }
 }
