@@ -39,6 +39,17 @@ data class Author(
     val displayInitials: String = name.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString("")
 )
 
+data class AuthorSearchResult(
+    val author: Author,
+    val matchType: MatchType,
+    val relevanceScore: Float = 0f
+)
+
+sealed class SearchResultItem {
+    data class AuthorResult(val authorSearchResult: AuthorSearchResult) : SearchResultItem()
+    data class PoemResult(val searchResult: SearchResult) : SearchResultItem()
+}
+
 // Lightweight poem metadata for memory-efficient caching and listings
 data class PoemMetadata(
     val id: String,

@@ -2,6 +2,8 @@ package com.example.poetica.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.example.poetica.data.model.Poem
 import com.example.poetica.data.repository.PoemRepository
 import kotlinx.coroutines.flow.*
@@ -9,8 +11,6 @@ import kotlinx.coroutines.launch
 
 data class AuthorPoemsUiState(
     val authorName: String = "",
-    val poems: List<Poem> = emptyList(),
-    val isLoading: Boolean = false,
     val error: String? = null,
     val isRefreshing: Boolean = false
 )
@@ -20,61 +20,38 @@ class AuthorPoemsViewModel(
     private val repository: PoemRepository
 ) : ViewModel() {
     
-    private val _isLoading = MutableStateFlow(false)
     private val _isRefreshing = MutableStateFlow(false)
     private val _error = MutableStateFlow<String?>(null)
-    private val _poems = MutableStateFlow<List<Poem>>(emptyList())
     
     val uiState: StateFlow<AuthorPoemsUiState> = combine(
-        _poems,
-        _isLoading,
         _isRefreshing,
         _error
-    ) { poems, isLoading, isRefreshing, error ->
+    ) { isRefreshing, error ->
         AuthorPoemsUiState(
             authorName = authorName,
-            poems = poems.sortedBy { it.title },
-            isLoading = isLoading,
             isRefreshing = isRefreshing,
             error = error
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = AuthorPoemsUiState(
-            authorName = authorName,
-            isLoading = true
-        )
+        initialValue = AuthorPoemsUiState(authorName = authorName)
     )
     
-    init {
-        loadAuthorPoems()
-    }
+    // Paged poems flow with caching
+    val pagedPoems: Flow<PagingData<Poem>> = repository
+        .getAuthorPoemsPagedFlow(authorName)
+        .cachedIn(viewModelScope)
     
     fun refresh() {
-        loadAuthorPoems(isRefresh = true)
+        _isRefreshing.value = true
+        // Note: PagingData refresh is handled automatically by Paging 3
+        // when the user performs pull-to-refresh action
+        _isRefreshing.value = false
+        _error.value = null
     }
     
-    private fun loadAuthorPoems(isRefresh: Boolean = false) {
-        viewModelScope.launch {
-            try {
-                if (isRefresh) {
-                    _isRefreshing.value = true
-                } else {
-                    _isLoading.value = true
-                }
-                _error.value = null
-                
-                repository.getPoemsByAuthorMetadata(authorName).collect { poems ->
-                    _poems.value = poems
-                    _isLoading.value = false
-                    _isRefreshing.value = false
-                }
-            } catch (e: Exception) {
-                _error.value = "Failed to load poems: ${e.message}"
-                _isLoading.value = false
-                _isRefreshing.value = false
-            }
-        }
+    fun clearError() {
+        _error.value = null
     }
 }

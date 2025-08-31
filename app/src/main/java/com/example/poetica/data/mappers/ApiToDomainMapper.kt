@@ -57,6 +57,36 @@ object ApiToDomainMapper {
         return results.sortedByDescending { it.relevanceScore }
     }
     
+    fun mapApiSearchResponseToSearchResultItems(apiResponse: ApiSearchResponse): List<SearchResultItem> {
+        val results = mutableListOf<SearchResultItem>()
+        
+        // Map author results first (higher priority)
+        apiResponse.results.authors.forEach { authorResult ->
+            val authorSearchResult = AuthorSearchResult(
+                author = Author(
+                    name = authorResult.name,
+                    poemCount = authorResult.poemCount
+                ),
+                matchType = mapApiMatchType(authorResult.matchType),
+                relevanceScore = calculateAuthorRelevanceScore(authorResult)
+            )
+            results.add(SearchResultItem.AuthorResult(authorSearchResult))
+        }
+        
+        // Map poem results
+        apiResponse.results.poems.forEach { poemResult ->
+            val searchResult = mapApiPoemSearchResultToSearchResult(poemResult)
+            results.add(SearchResultItem.PoemResult(searchResult))
+        }
+        
+        return results.sortedByDescending { item ->
+            when (item) {
+                is SearchResultItem.AuthorResult -> item.authorSearchResult.relevanceScore
+                is SearchResultItem.PoemResult -> item.searchResult.relevanceScore
+            }
+        }
+    }
+    
     
     private fun mapApiMatchType(apiMatchType: String): MatchType {
         return when (apiMatchType.lowercase()) {
@@ -93,5 +123,29 @@ object ApiToDomainMapper {
         val randomVariation = Random.nextFloat() * 5f
         
         return baseScore + lengthBonus + randomVariation
+    }
+    
+    private fun calculateAuthorRelevanceScore(authorResult: ApiAuthorResult): Float {
+        // Calculate relevance score based on match type
+        val baseScore = when (authorResult.matchType.lowercase()) {
+            "exact" -> 150f  // Authors with exact matches get highest priority
+            "fuzzy" -> 120f
+            "partial" -> 100f
+            else -> 80f
+        }
+        
+        // Bonus for authors with more poems (popular authors)
+        val poemCountBonus = when {
+            authorResult.poemCount >= 100 -> 20f
+            authorResult.poemCount >= 50 -> 15f
+            authorResult.poemCount >= 20 -> 10f
+            authorResult.poemCount >= 10 -> 5f
+            else -> 0f
+        }
+        
+        // Small random factor to vary results
+        val randomVariation = Random.nextFloat() * 3f
+        
+        return baseScore + poemCountBonus + randomVariation
     }
 }

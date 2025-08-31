@@ -8,17 +8,19 @@ import android.content.Context
 import android.util.Log
 import com.example.poetica.data.converters.Converters
 import com.example.poetica.data.model.Poem
+import com.example.poetica.data.model.AuthorPoemRemoteKeys
 import java.io.File
 
 @Database(
-    entities = [Poem::class],
-    version = 3,
+    entities = [Poem::class, AuthorPoemRemoteKeys::class],
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class PoeticaDatabase : RoomDatabase() {
     
     abstract fun poemDao(): PoemDao
+    abstract fun authorPoemRemoteKeysDao(): AuthorPoemRemoteKeysDao
     
     companion object {
         @Volatile

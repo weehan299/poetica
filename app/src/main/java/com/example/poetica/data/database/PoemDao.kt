@@ -1,5 +1,6 @@
 package com.example.poetica.data.database
 
+import androidx.paging.PagingSource
 import androidx.room.*
 import com.example.poetica.data.model.Poem
 import kotlinx.coroutines.flow.Flow
@@ -47,6 +48,14 @@ interface PoemDao {
     // Full content version - only use when specifically needed
     @Query("SELECT * FROM poems WHERE author = :author ORDER BY title ASC")
     fun getPoemsByAuthor(author: String): Flow<List<Poem>>
+    
+    // Paging 3 support for author poems - MEMORY OPTIMIZED (metadata only)
+    @Query("SELECT id, title, author, '' as content, sourceType FROM poems WHERE author = :author ORDER BY title ASC")
+    fun getPoemsByAuthorPagedMetadata(author: String): PagingSource<Int, Poem>
+    
+    // Legacy paging with full content - AVOID using this for large lists (can cause OOM)
+    @Query("SELECT * FROM poems WHERE author = :author ORDER BY title ASC")
+    fun getPoemsByAuthorPaged(author: String): PagingSource<Int, Poem>
     
     
     @Query("""

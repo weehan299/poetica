@@ -1,9 +1,11 @@
 package com.example.poetica.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -12,13 +14,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.poetica.data.model.Poem
-import com.example.poetica.data.model.SearchResult
+import com.example.poetica.data.model.*
 import com.example.poetica.ui.viewmodel.DiscoverViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,6 +30,7 @@ import com.example.poetica.ui.viewmodel.DiscoverViewModel
 fun DiscoverScreen(
     viewModel: DiscoverViewModel,
     onPoemClick: (String) -> Unit,
+    onAuthorClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -87,16 +92,26 @@ fun DiscoverScreen(
             }
 
             uiState.searchQuery.isNotEmpty() -> {
-                // Search Results
-                if (uiState.searchResults.isNotEmpty()) {
+                // Mixed Search Results (Authors + Poems)
+                if (uiState.mixedSearchResults.isNotEmpty()) {
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(uiState.searchResults) { searchResult ->
-                            SearchResultItem(
-                                searchResult = searchResult,
-                                onClick = { onPoemClick(searchResult.poem.id) }
-                            )
+                        items(uiState.mixedSearchResults) { searchResultItem ->
+                            when (searchResultItem) {
+                                is SearchResultItem.AuthorResult -> {
+                                    AuthorCard(
+                                        authorSearchResult = searchResultItem.authorSearchResult,
+                                        onAuthorClick = onAuthorClick
+                                    )
+                                }
+                                is SearchResultItem.PoemResult -> {
+                                    PoemCard(
+                                        searchResult = searchResultItem.searchResult,
+                                        onPoemClick = onPoemClick
+                                    )
+                                }
+                            }
                         }
                     }
                 } else {
@@ -144,23 +159,88 @@ fun DiscoverScreen(
 }
 
 @Composable
-fun SearchResultItem(
+fun AuthorCard(
+    authorSearchResult: AuthorSearchResult,
+    onAuthorClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar with initials
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = authorSearchResult.author.displayInitials,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // Author info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = authorSearchResult.author.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(2.dp))
+                
+                Text(
+                    text = "${authorSearchResult.author.poemCount} poems",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            // View poems button
+            OutlinedButton(
+                onClick = { onAuthorClick(authorSearchResult.author.name) },
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "View poems",
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PoemCard(
     searchResult: SearchResult,
-    onClick: () -> Unit,
+    onPoemClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .clickable { onPoemClick(searchResult.poem.id) },
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = searchResult.poem.title,
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -176,11 +256,12 @@ fun SearchResultItem(
             
             Spacer(modifier = Modifier.height(8.dp))
             
+            // Show 1-2 lines preview
             Text(
                 text = searchResult.poem.content,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 3,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }

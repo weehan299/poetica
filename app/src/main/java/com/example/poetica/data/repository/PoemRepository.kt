@@ -2,6 +2,10 @@ package com.example.poetica.data.repository
 
 import android.content.Context
 import android.util.Log
+import androidx.paging.ExperimentalPagingApi
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import com.example.poetica.data.api.ApiConfig
 import com.example.poetica.data.api.PoeticaApiService
 import com.example.poetica.data.config.PoeticaConfig
@@ -10,10 +14,13 @@ import com.example.poetica.data.database.AuthorResult
 import com.example.poetica.data.database.PoeticaDatabase
 import com.example.poetica.data.mappers.ApiToDomainMapper
 import com.example.poetica.data.model.*
+import com.example.poetica.data.paging.AuthorPoemRemoteMediator
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -27,6 +34,7 @@ import kotlin.random.Random
 class PoemRepository(
     private val poemDao: PoemDao,
     val context: Context,
+    private val database: PoeticaDatabase,
     private val apiService: PoeticaApiService = ApiConfig.createApiService(context),
     private val config: PoeticaConfig? = null
 ) {
@@ -241,6 +249,36 @@ class PoemRepository(
     // Full content version - only when needed
     fun getPoemsByAuthor(author: String): Flow<List<Poem>> = poemDao.getPoemsByAuthor(author)
     
+    // Paging 3 support with RemoteMediator for hybrid local + remote data
+    @OptIn(ExperimentalPagingApi::class)
+    fun getAuthorPoemsPagedFlow(author: String): Flow<PagingData<Poem>> {
+        Log.d(TAG, "🔄 Creating paged flow for author: '$author'")
+        
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false,
+                prefetchDistance = 5
+            ),
+            remoteMediator = if (shouldUseRemoteData()) {
+                Log.d(TAG, "🌐 Using RemoteMediator for author '$author'")
+                AuthorPoemRemoteMediator(
+                    authorName = author,
+                    apiService = apiService,
+                    database = database
+                )
+            } else {
+                Log.d(TAG, "🏠 RemoteMediator disabled, local-only paging for author '$author'")
+                null
+            },
+            pagingSourceFactory = {
+                Log.d(TAG, "📄 🧠 Creating MEMORY-OPTIMIZED PagingSource for author '$author'")
+                Log.d(TAG, "📄 💾 Using metadata-only queries (no content field) to prevent OOM crashes")
+                poemDao.getPoemsByAuthorPagedMetadata(author)
+            }
+        ).flow
+    }
+    
     suspend fun searchPoems(query: String): Flow<List<SearchResult>> = flow {
         Log.d(TAG, "🔍 searchPoems() called with query: '$query'")
         
@@ -305,6 +343,109 @@ class PoemRepository(
             
             Log.d(TAG, "🏠 ✅ Returning local results (${localResults.size} items)")
             localResults
+        }
+        emit(results)
+    }
+    
+    suspend fun searchMixedResults(query: String): Flow<List<SearchResultItem>> = flow {
+        Log.d(TAG, "🔍 searchMixedResults() called with query: '$query'")
+        
+        if (query.isBlank()) {
+            Log.d(TAG, "🔍 Empty query, returning empty results")
+            emit(emptyList())
+            return@flow
+        }
+        
+        val results = withContext(Dispatchers.IO) {
+            // Try API search first if enabled
+            if (shouldUseRemoteData()) {
+                Log.d(TAG, "🌐 Attempting API search for mixed results: '$query' (60s timeout)")
+                try {
+                    // Add 60-second timeout to remote search
+                    val apiResults = withTimeout(60_000L) {
+                        Log.d(TAG, "🌐 Making API call to search endpoint...")
+                        val response = apiService.search(
+                            query = query.trim(),
+                            poemLimit = ApiConfig.DEFAULT_SEARCH_LIMIT
+                        )
+                        
+                        Log.d(TAG, "🌐 API response: isSuccessful=${response.isSuccessful}, code=${response.code()}")
+                        
+                        if (response.isSuccessful && response.body() != null) {
+                            val responseBody = response.body()!!
+                            Log.d(TAG, "🌐 API response body received, parsing mixed results...")
+                            val results = ApiToDomainMapper.mapApiSearchResponseToSearchResultItems(responseBody)
+                            Log.d(TAG, "🌐 API mixed search results: ${results.size} items found")
+                            results
+                        } else {
+                            Log.w(TAG, "🌐 API response not successful or empty body: ${response.code()} - ${response.message()}")
+                            response.errorBody()?.let {
+                                Log.w(TAG, "🌐 Error body: ${it.string()}")
+                            }
+                            emptyList<SearchResultItem>()
+                        }
+                    }
+                    
+                    if (apiResults.isNotEmpty()) {
+                        // Cache poem metadata only for memory efficiency
+                        val poems = apiResults.filterIsInstance<SearchResultItem.PoemResult>().map { it.searchResult.poem }
+                        cacheApiMetadata(poems)
+                        Log.d(TAG, "🌐 ✅ Using API mixed results (${apiResults.size} items)")
+                        return@withContext apiResults
+                    } else {
+                        Log.d(TAG, "🌐 API returned empty results, falling back to local")
+                    }
+                } catch (e: TimeoutCancellationException) {
+                    Log.w(TAG, "🌐 ⏱️ API search timed out after 60 seconds for '$query', falling back to local")
+                } catch (e: Exception) {
+                    Log.w(TAG, "🌐 ❌ API search failed for '$query', falling back to local", e)
+                }
+            } else {
+                Log.d(TAG, "🏠 Skipping API search, using local search only")
+            }
+            
+            // Fallback to local search with memory optimization
+            Log.d(TAG, "🏠 📱 Remote search failed/empty, performing local fallback search for: '$query'")
+            val poems = poemDao.searchPoems(query.trim()) // Already limited to 100 results
+            val authors = poemDao.searchAuthorsWithCounts(query.trim(), 10)
+            Log.d(TAG, "🏠 Local database search found: ${poems.size} poems, ${authors.size} authors")
+            
+            val localResults = mutableListOf<SearchResultItem>()
+            
+            // Add local authors if query matches author names
+            authors.forEach { authorResult ->
+                val authorSearchResult = AuthorSearchResult(
+                    author = Author(
+                        name = authorResult.name,
+                        poemCount = authorResult.poemCount
+                    ),
+                    matchType = determineMatchType(authorResult.name, query),
+                    relevanceScore = calculateAuthorLocalRelevanceScore(authorResult.name, query)
+                )
+                localResults.add(SearchResultItem.AuthorResult(authorSearchResult))
+            }
+            
+            // Add local poems
+            poems.forEach { poem ->
+                val searchResult = SearchResult(
+                    poem = poem,
+                    matchType = determineMatchType(poem, query),
+                    relevanceScore = calculateRelevanceScore(poem, query)
+                )
+                localResults.add(SearchResultItem.PoemResult(searchResult))
+            }
+            
+            val sortedResults = localResults.sortedByDescending { item ->
+                when (item) {
+                    is SearchResultItem.AuthorResult -> item.authorSearchResult.relevanceScore
+                    is SearchResultItem.PoemResult -> item.searchResult.relevanceScore
+                }
+            }
+            
+            val authorCount = sortedResults.count { it is SearchResultItem.AuthorResult }
+            val poemCount = sortedResults.count { it is SearchResultItem.PoemResult }
+            Log.d(TAG, "🏠 ✅ Returning local mixed results: ${sortedResults.size} total ($authorCount authors, $poemCount poems)")
+            sortedResults
         }
         emit(results)
     }
@@ -392,6 +533,17 @@ class PoemRepository(
         }
     }
     
+    private fun determineMatchType(authorName: String, query: String): MatchType {
+        val queryLower = query.lowercase()
+        val authorLower = authorName.lowercase()
+        
+        return when {
+            authorLower == queryLower -> MatchType.AUTHOR_EXACT
+            authorLower.contains(queryLower) -> MatchType.AUTHOR_PARTIAL
+            else -> MatchType.AUTHOR_PARTIAL // Default for fuzzy matches
+        }
+    }
+    
     private fun calculateRelevanceScore(poem: Poem, query: String): Float {
         val queryLower = query.lowercase()
         val titleLower = poem.title.lowercase()
@@ -419,6 +571,22 @@ class PoemRepository(
         if (contentLower.contains(queryLower)) {
             val occurrences = contentLower.split(queryLower).size - 1
             score += occurrences * 10f
+        }
+        
+        return score
+    }
+    
+    private fun calculateAuthorLocalRelevanceScore(authorName: String, query: String): Float {
+        val queryLower = query.lowercase()
+        val authorLower = authorName.lowercase()
+        
+        var score = 0f
+        
+        // Author name matches get high priority
+        when {
+            authorLower == queryLower -> score += 150f // Higher than poems for exact author matches
+            authorLower.startsWith(queryLower) -> score += 120f
+            authorLower.contains(queryLower) -> score += 100f
         }
         
         return score

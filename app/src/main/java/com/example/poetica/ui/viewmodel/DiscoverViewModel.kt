@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.poetica.data.model.Poem
 import com.example.poetica.data.model.SearchResult
+import com.example.poetica.data.model.SearchResultItem
 import com.example.poetica.data.repository.PoemRepository
 // SearchEngine import removed - now using repository.searchPoems() for API integration
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -15,7 +16,7 @@ import kotlinx.coroutines.launch
 data class DiscoverUiState(
     val poems: List<Poem> = emptyList(),
     val searchQuery: String = "",
-    val searchResults: List<SearchResult> = emptyList(),
+    val mixedSearchResults: List<SearchResultItem> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -42,30 +43,56 @@ class DiscoverViewModel(
             initialValue = emptyList()
         )
     
-    private val searchResults = _searchQuery
+    
+    private val mixedSearchResults = _searchQuery
         .debounce(300) // Wait 300ms after user stops typing
         .distinctUntilChanged()
         .onEach { query ->
-            Log.d(TAG, "🔎 Search query changed: '$query'")
+            Log.d(TAG, "🔎 Mixed search query changed: '$query'")
         }
         .flatMapLatest { query ->
             if (query.isBlank()) {
-                Log.d(TAG, "🔎 Empty query, returning empty results")
+                Log.d(TAG, "🔎 Empty query, returning empty mixed results")
                 flowOf(emptyList())
             } else {
-                Log.d(TAG, "🔎 Starting search for: '$query'")
-                repository.searchPoems(query.trim())
+                Log.d(TAG, "🔎 Starting remote-first mixed search for: '$query'")
+                repository.searchMixedResults(query.trim())
                     .onEach { results ->
-                        Log.d(TAG, "🔎 Search results received: ${results.size} items for query '$query'")
+                        val authorCount = results.count { it is SearchResultItem.AuthorResult }
+                        val poemCount = results.count { it is SearchResultItem.PoemResult }
+                        Log.d(TAG, "🔎 ✅ Mixed search completed: ${results.size} total items ($authorCount authors, $poemCount poems) for query '$query'")
+                        
                         if (results.isNotEmpty()) {
-                            Log.d(TAG, "🔎 First few results: ${results.take(3).map { "'${it.poem.title}' by ${it.poem.author}" }}")
+                            val summary = results.take(3).map { item ->
+                                when (item) {
+                                    is SearchResultItem.AuthorResult -> "📝 Author: ${item.authorSearchResult.author.name} (${item.authorSearchResult.author.poemCount} poems)"
+                                    is SearchResultItem.PoemResult -> "📖 Poem: '${item.searchResult.poem.title}' by ${item.searchResult.poem.author}"
+                                }
+                            }
+                            Log.d(TAG, "🔎 Sample results: $summary")
+                        } else {
+                            Log.w(TAG, "🔎 ⚠️ No results found for query: '$query'")
                         }
                     }
                     .catch { throwable ->
-                        // Log error but don't break the UI
-                        Log.w(TAG, "❌ Search failed for query: '$query'", throwable)
-                        Log.w(TAG, "❌ Error type: ${throwable.javaClass.simpleName}, message: ${throwable.message}")
-                        emit(emptyList()) 
+                        // Enhanced error handling with more details
+                        Log.e(TAG, "❌ Mixed search failed for query: '$query'", throwable)
+                        when (throwable) {
+                            is java.net.SocketTimeoutException -> {
+                                Log.w(TAG, "❌ Network timeout occurred during search")
+                            }
+                            is java.net.UnknownHostException -> {
+                                Log.w(TAG, "❌ Network connection issue (DNS/connectivity)")
+                            }
+                            is kotlinx.coroutines.TimeoutCancellationException -> {
+                                Log.w(TAG, "❌ Search operation timed out after 60 seconds")
+                            }
+                            else -> {
+                                Log.w(TAG, "❌ Unexpected error: ${throwable.javaClass.simpleName} - ${throwable.message}")
+                            }
+                        }
+                        // Always return empty list to prevent UI crashes
+                        emit(emptyList<SearchResultItem>()) 
                     }
             }
         }
@@ -78,14 +105,14 @@ class DiscoverViewModel(
     val uiState: StateFlow<DiscoverUiState> = combine(
         poems,
         _searchQuery,
-        searchResults,
+        mixedSearchResults,
         _isLoading,
         _error
-    ) { poems, searchQuery, searchResults, isLoading, error ->
+    ) { poems, searchQuery, mixedSearchResults, isLoading, error ->
         DiscoverUiState(
             poems = poems,
             searchQuery = searchQuery,
-            searchResults = searchResults,
+            mixedSearchResults = mixedSearchResults,
             isLoading = isLoading,
             error = error
         )

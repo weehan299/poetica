@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
         repository = PoemRepository(
             poemDao = database.poemDao(),
             context = this,
+            database = database,
             apiService = apiService,
             config = config
         )
