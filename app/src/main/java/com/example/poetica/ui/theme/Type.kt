@@ -176,3 +176,24 @@ fun getResponsivePoemAuthorStyle(): TextStyle {
         )
     }
 }
+
+/**
+ * Calculates horizontal padding to center poem content (max 600dp) within the available width.
+ * This ensures the entire screen is scrollable while keeping content readable and centered.
+ */
+@Composable
+fun getResponsivePoemContentPadding(): Dp {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val basePadding = getResponsivePoemPadding()
+    
+    return when {
+        // On screens wider than 600dp + 2*basePadding, center the content
+        screenWidth > (600.dp + (basePadding * 2)) -> {
+            val extraSpace = screenWidth - 600.dp
+            extraSpace / 2
+        }
+        // On narrower screens, use the responsive padding
+        else -> basePadding
+    }
+}

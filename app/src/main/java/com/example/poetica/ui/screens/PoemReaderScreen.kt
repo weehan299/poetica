@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.poetica.data.model.Poem
 import com.example.poetica.ui.theme.getResponsivePoemAuthorStyle
+import com.example.poetica.ui.theme.getResponsivePoemContentPadding
 import com.example.poetica.ui.theme.getResponsivePoemPadding
 import com.example.poetica.ui.theme.getResponsivePoemTextStyle
 import com.example.poetica.ui.theme.getResponsivePoemTitleStyle
@@ -145,15 +146,13 @@ fun PoemReaderContent(
             )
         )
         
-        // LazyColumn with SelectionContainer for text selection
-        SelectionContainer {
-            LazyColumn(
-                state = lazyListState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = getResponsivePoemPadding()),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+        // LazyColumn without SelectionContainer to ensure full-width scrolling
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
                 // Header spacer
                 item { 
                     Spacer(modifier = Modifier.height(16.dp)) 
@@ -161,16 +160,15 @@ fun PoemReaderContent(
                 
                 // Title
                 item {
-                    Box(
-                        modifier = Modifier.widthIn(max = 600.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    SelectionContainer {
                         Text(
                             text = poem.title,
                             style = getResponsivePoemTitleStyle(),
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = getResponsivePoemContentPadding())
                         )
                     }
                 }
@@ -182,16 +180,15 @@ fun PoemReaderContent(
                 
                 // Author
                 item {
-                    Box(
-                        modifier = Modifier.widthIn(max = 600.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    SelectionContainer {
                         Text(
                             text = poem.author,
                             style = getResponsivePoemAuthorStyle(),
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = getResponsivePoemContentPadding())
                         )
                     }
                 }
@@ -203,13 +200,12 @@ fun PoemReaderContent(
                 
                 // Each stanza as separate LazyColumn item for optimal performance
                 items(stanzas.size) { index ->
-                    Box(
-                        modifier = Modifier.widthIn(max = 600.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
+                    SelectionContainer {
                         ReadableStanza(
                             text = stanzas[index].trim(),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = getResponsivePoemContentPadding())
                         )
                     }
                     
@@ -224,7 +220,6 @@ fun PoemReaderContent(
                     Spacer(modifier = Modifier.height(32.dp)) 
                 }
             }
-        }
     }
 }
 
