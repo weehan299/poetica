@@ -123,6 +123,7 @@ class AuthorPoemRemoteMediator(
                         title = apiPoemListItem.title,
                         author = apiPoemListItem.author.name,
                         content = apiPoemListItem.firstLine, // Preview content - full content fetched on-demand
+                        firstLine = apiPoemListItem.firstLine,
                         sourceType = SourceType.REMOTE
                     )
                 }

@@ -1,5 +1,6 @@
 package com.example.poetica.ui.theme
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.systemBars
@@ -196,4 +197,32 @@ fun getResponsivePoemContentPadding(): Dp {
         // On narrower screens, use the responsive padding
         else -> basePadding
     }
+}
+
+/**
+ * Checks if the current device orientation is landscape.
+ */
+@Composable
+fun isLandscape(): Boolean {
+    val configuration = LocalConfiguration.current
+    return configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+}
+
+/**
+ * Returns responsive vertical spacing values optimized for both portrait and landscape modes.
+ * Reduces spacing in landscape to maximize content visibility while maintaining readability.
+ */
+object ResponsiveSpacing {
+    
+    @Composable
+    fun headerSpacer(): Dp = if (isLandscape()) 0.dp else 16.dp
+    
+    @Composable
+    fun afterTitleSpacer(): Dp = if (isLandscape()) 2.dp else 8.dp
+    
+    @Composable
+    fun beforeContentSpacer(): Dp = if (isLandscape()) 32.dp else 32.dp
+    
+    @Composable
+    fun footerSpacer(): Dp = if (isLandscape()) 16.dp else 32.dp
 }

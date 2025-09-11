@@ -14,7 +14,7 @@ import java.io.File
 
 @Database(
     entities = [Poem::class, AuthorPoemRemoteKeys::class, RecentSearch::class],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

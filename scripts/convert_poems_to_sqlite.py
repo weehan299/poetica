@@ -47,6 +47,7 @@ def create_poems_database(json_file_path, db_output_path):
                 title TEXT NOT NULL,
                 author TEXT NOT NULL,
                 content TEXT NOT NULL,
+                firstLine TEXT NOT NULL,
                 sourceType TEXT NOT NULL DEFAULT 'BUNDLED'
             )
         ''')
@@ -55,6 +56,7 @@ def create_poems_database(json_file_path, db_output_path):
         cursor.execute('CREATE INDEX index_poems_title ON poems(title)')
         cursor.execute('CREATE INDEX index_poems_author ON poems(author)')
         cursor.execute('CREATE INDEX index_poems_content ON poems(content)')
+        cursor.execute('CREATE INDEX index_poems_firstLine ON poems(firstLine)')
         cursor.execute('''
             CREATE INDEX index_poems_title_author 
             ON poems(title, author)
@@ -79,12 +81,13 @@ def create_poems_database(json_file_path, db_output_path):
                         poem.get('title', ''),
                         poem.get('author', ''),
                         poem.get('text', ''),  # Maps to 'content' field
+                        poem.get('first_line', ''),  # Maps to 'firstLine' field
                         'BUNDLED'  # sourceType
                     )
                     cursor.execute('''
                         INSERT INTO poems 
-                        (id, title, author, content, sourceType)
-                        VALUES (?, ?, ?, ?, ?)
+                        (id, title, author, content, firstLine, sourceType)
+                        VALUES (?, ?, ?, ?, ?, ?)
                     ''', poem_data)
                     total_poems += 1
 

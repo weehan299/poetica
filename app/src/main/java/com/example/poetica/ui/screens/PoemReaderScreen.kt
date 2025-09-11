@@ -30,6 +30,8 @@ import com.example.poetica.ui.theme.getResponsivePoemContentPadding
 import com.example.poetica.ui.theme.getResponsivePoemPadding
 import com.example.poetica.ui.theme.getResponsivePoemTextStyle
 import com.example.poetica.ui.theme.getResponsivePoemTitleStyle
+import com.example.poetica.ui.theme.ResponsiveSpacing
+import com.example.poetica.ui.theme.isLandscape
 import com.example.poetica.ui.viewmodel.PoemReaderViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,9 +119,12 @@ fun PoemReaderContent(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .windowInsetsPadding(WindowInsets.systemBars) // Respect system bars
+            .let { 
+                // Apply system bar padding only in portrait to avoid excessive top space in landscape
+                if (isLandscape()) it else it.windowInsetsPadding(WindowInsets.systemBars)
+            }
     ) {
-        // Top App Bar with progress indicator
+        // Top App Bar with progress indicator - compact in landscape
         TopAppBar(
             title = { 
                 // Discreet progress indicator
@@ -143,7 +148,9 @@ fun PoemReaderContent(
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent
-            )
+            ),
+            // Use compact insets in landscape mode
+            windowInsets = if (isLandscape()) WindowInsets(0.dp) else TopAppBarDefaults.windowInsets
         )
         
         // LazyColumn without SelectionContainer to ensure full-width scrolling
@@ -153,9 +160,9 @@ fun PoemReaderContent(
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-                // Header spacer
+                // Header spacer - responsive to orientation
                 item { 
-                    Spacer(modifier = Modifier.height(16.dp)) 
+                    Spacer(modifier = Modifier.height(ResponsiveSpacing.headerSpacer())) 
                 }
                 
                 // Title
@@ -173,9 +180,9 @@ fun PoemReaderContent(
                     }
                 }
                 
-                // Spacer after title
+                // Spacer after title - responsive to orientation
                 item { 
-                    Spacer(modifier = Modifier.height(8.dp)) 
+                    Spacer(modifier = Modifier.height(ResponsiveSpacing.afterTitleSpacer())) 
                 }
                 
                 // Author
@@ -193,9 +200,8 @@ fun PoemReaderContent(
                     }
                 }
                 
-                // Spacer before poem content
-                item { 
-                    Spacer(modifier = Modifier.height(32.dp)) 
+                item {
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
                 
                 // Each stanza as separate LazyColumn item for optimal performance
@@ -215,9 +221,9 @@ fun PoemReaderContent(
                     }
                 }
                 
-                // Footer spacer
+                // Footer spacer - responsive to orientation
                 item { 
-                    Spacer(modifier = Modifier.height(32.dp)) 
+                    Spacer(modifier = Modifier.height(ResponsiveSpacing.footerSpacer())) 
                 }
             }
     }

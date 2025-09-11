@@ -105,7 +105,7 @@ class HomeViewModel(
         viewModelScope.launch {
             try {
                 _authorsLoading.value = true
-                val authors = repository.getTopAuthors(limit = 20)
+                val authors = repository.getRandomAuthors(limit = 20)
                 _authors.value = authors
                 _authorsLoading.value = false
             } catch (e: Exception) {

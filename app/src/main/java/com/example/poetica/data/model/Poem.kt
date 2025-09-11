@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
         Index(value = ["title"]),
         Index(value = ["author"]),
         Index(value = ["content"]),
+        Index(value = ["firstLine"]),
         Index(value = ["title", "author"])
     ]
 )
@@ -20,6 +21,7 @@ data class Poem(
     val title: String,
     val author: String,
     val content: String,
+    val firstLine: String,
     val sourceType: SourceType = SourceType.BUNDLED
 )
 

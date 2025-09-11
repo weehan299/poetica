@@ -32,17 +32,17 @@ interface PoemDao {
     @Query("SELECT COUNT(*) FROM poems")
     suspend fun getPoemCountForSelection(): Int
     
-    @Query("SELECT id, title, author, '' as content, sourceType FROM poems ORDER BY title ASC LIMIT :limit OFFSET :offset")
+    @Query("SELECT id, title, author, '' as content, firstLine, sourceType FROM poems ORDER BY title ASC LIMIT :limit OFFSET :offset")
     suspend fun getPoemsMetadata(limit: Int, offset: Int): List<Poem>
     
-    @Query("SELECT id, title, author, '' as content, sourceType FROM poems ORDER BY title ASC")
+    @Query("SELECT id, title, author, '' as content, firstLine, sourceType FROM poems ORDER BY title ASC")
     fun getPoemsMetadataFlow(): Flow<List<Poem>>
     
     @Query("SELECT * FROM poems WHERE id = :id")
     suspend fun getPoemById(id: String): Poem?
     
     // Memory-optimized version - metadata only for listings
-    @Query("SELECT id, title, author, '' as content, sourceType FROM poems WHERE author = :author ORDER BY title ASC")
+    @Query("SELECT id, title, author, '' as content, firstLine, sourceType FROM poems WHERE author = :author ORDER BY title ASC")
     fun getPoemsByAuthorMetadata(author: String): Flow<List<Poem>>
     
     // Full content version - only use when specifically needed
@@ -50,7 +50,7 @@ interface PoemDao {
     fun getPoemsByAuthor(author: String): Flow<List<Poem>>
     
     // Paging 3 support for author poems - MEMORY OPTIMIZED (metadata only)
-    @Query("SELECT id, title, author, '' as content, sourceType FROM poems WHERE author = :author ORDER BY title ASC")
+    @Query("SELECT id, title, author, '' as content, firstLine, sourceType FROM poems WHERE author = :author ORDER BY title ASC")
     fun getPoemsByAuthorPagedMetadata(author: String): PagingSource<Int, Poem>
     
     // Legacy paging with full content - AVOID using this for large lists (can cause OOM)
@@ -77,7 +77,7 @@ interface PoemDao {
     suspend fun searchPoems(query: String): List<Poem>
     
     @Query("""
-        SELECT id, title, author, '' as content, sourceType FROM poems 
+        SELECT id, title, author, '' as content, firstLine, sourceType FROM poems 
         WHERE title LIKE '%' || :query || '%' 
         OR author LIKE '%' || :query || '%' 
         ORDER BY 
@@ -100,10 +100,10 @@ interface PoemDao {
         SELECT author as name, COUNT(*) as poemCount 
         FROM poems 
         GROUP BY author 
-        ORDER BY poemCount DESC, author ASC
+        ORDER BY RANDOM()
         LIMIT :limit
     """)
-    suspend fun getTopAuthorsWithCounts(limit: Int = 30): List<AuthorResult>
+    suspend fun getRandomAuthorsWithCounts(limit: Int = 30): List<AuthorResult>
     
     @Query("""
         SELECT author as name, COUNT(*) as poemCount 

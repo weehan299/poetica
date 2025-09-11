@@ -321,7 +321,7 @@ fun PoemCard(
             
             // Show 1-2 lines preview
             Text(
-                text = searchResult.poem.content,
+                text = searchResult.poem.firstLine.ifEmpty { searchResult.poem.content },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,

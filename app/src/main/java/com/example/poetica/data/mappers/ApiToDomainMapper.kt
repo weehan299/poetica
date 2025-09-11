@@ -12,6 +12,7 @@ object ApiToDomainMapper {
             title = apiPoem.title,
             author = apiPoem.author.name,
             content = apiPoem.text,
+            firstLine = extractFirstLine(apiPoem.text),
             sourceType = SourceType.REMOTE
         )
     }
@@ -22,6 +23,7 @@ object ApiToDomainMapper {
             title = apiPoemListItem.title,
             author = apiPoemListItem.author.name,
             content = apiPoemListItem.firstLine, // Note: Only first line available in list view
+            firstLine = apiPoemListItem.firstLine,
             sourceType = SourceType.REMOTE
         )
     }
@@ -34,6 +36,7 @@ object ApiToDomainMapper {
             title = apiPoemSearchResult.title,
             author = apiPoemSearchResult.authorName,
             content = apiPoemSearchResult.contentPreview,
+            firstLine = extractFirstLine(apiPoemSearchResult.contentPreview),
             sourceType = SourceType.REMOTE
         )
         
@@ -147,5 +150,9 @@ object ApiToDomainMapper {
         val randomVariation = Random.nextFloat() * 3f
         
         return baseScore + poemCountBonus + randomVariation
+    }
+    
+    private fun extractFirstLine(content: String): String {
+        return content.lines().firstOrNull()?.trim() ?: ""
     }
 }

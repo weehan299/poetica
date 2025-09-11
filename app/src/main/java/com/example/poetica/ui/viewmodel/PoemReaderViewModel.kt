@@ -43,7 +43,7 @@ class PoemReaderViewModel(
                     val contentLength = poem.content.length
                     val lineCount = poem.content.count { it == '\n' } + 1
                     val paragraphCount = poem.content.split("\n\n").size
-                    val preview = poem.content.take(100).replace("\n", "\\n")
+                    val preview = poem.firstLine.ifEmpty { poem.content.take(100) }.replace("\n", "\\n")
                     
                     Log.d(TAG, "📖 ✅ Loaded poem: '${poem.title}' by ${poem.author}")
                     Log.d(TAG, "📊 Content stats - Length: $contentLength chars, Lines: $lineCount, Paragraphs: $paragraphCount")

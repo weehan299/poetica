@@ -225,11 +225,14 @@ fun AuthorPoemListItem(
             
             Spacer(modifier = Modifier.height(4.dp))
             
-            // Memory optimization: Show only metadata, no content preview
+            // Show first line preview if available
             Text(
-                text = "Tap to read poem",
+                text = poem.firstLine.ifEmpty { "Tap to read poem" },
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                color = if (poem.firstLine.isNotEmpty()) 
+                    MaterialTheme.colorScheme.onSurfaceVariant 
+                else 
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

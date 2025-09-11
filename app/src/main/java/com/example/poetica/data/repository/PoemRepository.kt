@@ -495,10 +495,10 @@ class PoemRepository(
     
     suspend fun getAllAuthors(): List<String> = poemDao.getAllAuthors()
     
-    suspend fun getTopAuthors(limit: Int = 30): List<Author> {
+    suspend fun getRandomAuthors(limit: Int = 30): List<Author> {
         return withContext(Dispatchers.IO) {
             try {
-                val authorResults = poemDao.getTopAuthorsWithCounts(limit)
+                val authorResults = poemDao.getRandomAuthorsWithCounts(limit)
                 authorResults.map { result ->
                     Author(
                         name = result.name,
@@ -506,7 +506,7 @@ class PoemRepository(
                     )
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Error loading top authors", e)
+                Log.e(TAG, "❌ Error loading random authors", e)
                 emptyList() // Return empty list instead of crashing
             }
         }
